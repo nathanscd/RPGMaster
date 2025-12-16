@@ -9,7 +9,7 @@ type CharacterContextType = {
 
 const CharacterContext = createContext<CharacterContextType | null>(null)
 
-const API_URL = 'http://localhost:5000/characters' 
+const API_URL = 'http://localhost:3001/api/characters'
 
 export function CharacterProvider({ children }: { children: React.ReactNode }) {
   const [characters, setCharacters] = useState<Character[]>([])
@@ -30,14 +30,17 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
   function updateCharacter(id: string, updater: (c: Character) => Character) {
     setCharacters(prev => {
       const updatedCharacters = prev.map(c =>
-        c.id === id ? updater(c) : c
+        (c as any)._id === id ? updater(c) : c
       )
 
-      axios
-        .put(`${API_URL}/${id}`, updatedCharacters.find(c => c.id === id))
-        .catch(error => {
-          console.error('Erro ao atualizar personagem', error)
-        })
+      const updatedCharacter = updatedCharacters.find(c => (c as any)._id === id)
+      if (updatedCharacter) {
+        axios
+          .put(`${API_URL}/${id}`, updatedCharacter)
+          .catch(error => {
+            console.error('Erro ao atualizar personagem', error)
+          })
+      }
 
       return updatedCharacters
     })

@@ -1,6 +1,7 @@
 import express from 'express'
 import mongoose from 'mongoose'
 import cors from 'cors'
+import characterRoutes from './routes/characters.js'
 
 const app = express()
 
@@ -12,10 +13,15 @@ mongoose
   .then(() => console.log('MongoDB conectado'))
   .catch(err => console.error(err))
 
+// Rota de saúde
 app.get('/health', (req, res) => {
   res.json({ ok: true })
 })
 
-app.listen(3001, () => {
-  console.log('Servidor rodando na porta 3001')
+// Rota de personagens
+app.use('/api/characters', characterRoutes)
+
+const port = 3001
+app.listen(port, () => {
+  console.log('Servidor rodando na porta', port)
 })
