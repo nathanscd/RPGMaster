@@ -23,14 +23,14 @@ export default function DiceRoller({ label, roll }: Props) {
   return (
     <div className="bg-zinc-800 p-3 rounded space-y-1">
       <div className="flex justify-between items-center">
-        <span className="font-semibold">
+        <span>
           {label} – {roll.quantidade}d{roll.dado}
           {roll.modificador ? ` + ${roll.modificador}` : ''}
         </span>
 
         <button
           onClick={rollDice}
-          className="bg-blue-600 px-2 py-1 rounded text-sm"
+          className="bg-blue-600 px-2 py-1 rounded text-sm btnn"
         >
           ROLAR
         </button>

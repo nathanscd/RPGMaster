@@ -1,10 +1,12 @@
 import { useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useCharacters } from '../context/CharacterContext'
 import { useState } from 'react'
 import Section from '../components/Section'
 import NumericField from '../components/NumericField'
 import { Character } from '../types/Character'
 import DiceRoller from '../components/DiceRoller'
+import FreeDiceRoller from '../components/FreeDiceRoller'
 
 export default function SheetView() {
   const { id } = useParams()
@@ -20,11 +22,26 @@ export default function SheetView() {
     updateCharacter(character.id, fn)
   }
 
+  function removeItem(itemId: string) {
+    updateCharacter(id!, c => {
+      const updatedInventario = c.inventario.filter(item => item.id !== itemId)
+
+      return {
+        ...c,
+        inventario: updatedInventario
+      }
+    })
+  }
+
+  const pesoTotal = character.inventario.reduce(
+    (total, item) => total + item.peso,
+    0
+  )
+
   return (
     <div className="viewport">
       <div className="char">
         <div className="Player">
-          <img src="" />
           <h1>{character.nome}</h1>
         </div>
 
@@ -88,6 +105,10 @@ export default function SheetView() {
       </div>
 
       <div className="various">
+        <Section title="Rolagem Livre">
+          <FreeDiceRoller />
+        </Section>
+
         <Section title="Defesa">
           {Object.entries(character.defesa).map(([k, v]) => (
             <NumericField
@@ -121,7 +142,7 @@ export default function SheetView() {
         </Section>
 
         <Section title="Habilidades">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {character.habilidades.map((hab, i) => (
               <DiceRoller
                 key={i}
@@ -133,7 +154,7 @@ export default function SheetView() {
         </Section>
 
         <Section title="Armas">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {character.armas.map((arma, i) => (
               <DiceRoller
                 key={i}
@@ -141,6 +162,65 @@ export default function SheetView() {
                 roll={arma.roll}
               />
             ))}
+          </div>
+        </Section>
+
+        <Section title="Inventário">
+          <div className="space-y-2">
+            {character.inventario.map((item, i) => (
+              <div
+                key={i}
+                className="item"
+              >
+                <div>
+                  <span>{item.nome}</span>
+                  <span className="ml-2 text-sm text-zinc-400">
+                    Peso {item.peso}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() =>
+                    update(c => {
+                      const novoInventario = c.inventario.filter(
+                        (_, index) => index !== i
+                      )
+
+                      const novasArmas =
+                        item.tipo === 'arma'
+                          ? c.armas.filter(a => a.nome !== item.nome)
+                          : c.armas
+
+                      return {
+                        ...c,
+                        inventario: novoInventario,
+                        armas: novasArmas
+                      }
+                    })
+                  }
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remover
+                </button>
+              </div>
+            ))}
+
+            <div className="text-sm text-zinc-400">
+              Peso total: {pesoTotal} / {character.inventarioMaxPeso}
+            </div>
+
+            {pesoTotal >= character.inventarioMaxPeso && (
+              <div className="text-red-500 text-sm">
+                Inventário cheio
+              </div>
+            )}
+
+            <Link
+              to={`/sheet/${character.id}/add-item`}
+              className="bg-blue-600 px-3 py-1 rounded inline-block mt-2"
+            >
+              Adicionar Itens
+            </Link>
           </div>
         </Section>
       </div>
