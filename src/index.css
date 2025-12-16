@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#root{
+  background-color: black;
+}
+
+
+.Section{
+  width: fit-content;
+  padding: 3vw;
+  background-color: rgb(12, 12, 12);
+  border-radius: 10px;
+}
+
+.viewport{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap:10px;
+  height: 100dvh;
+  padding: 1.5vw;
+}
+
+Section{
+  max-height: fit-content;
+}
+
+.char{
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+}
+
+.various{
+  display: flex;
+  flex-direction: row;
+  gap: 2vw;
+  padding: 2vw;
+  flex-wrap: wrap;
+}
+
+.Player{
+  background-color: rgb(12, 12, 12);
+  height: fit-content;
+  width: fit-content;
+  border-radius: 10px;
+  padding: 1vw
+}
