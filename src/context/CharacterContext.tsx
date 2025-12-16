@@ -9,12 +9,11 @@ type CharacterContextType = {
 
 const CharacterContext = createContext<CharacterContextType | null>(null)
 
-const API_URL = 'http://localhost:5000/characters' // Endpoint da API
+const API_URL = 'http://localhost:5000/characters' 
 
 export function CharacterProvider({ children }: { children: React.ReactNode }) {
   const [characters, setCharacters] = useState<Character[]>([])
 
-  // Carregar personagens da API
   useEffect(() => {
     async function fetchCharacters() {
       try {
@@ -28,14 +27,12 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
     fetchCharacters()
   }, [])
 
-  // Função para atualizar personagem
   function updateCharacter(id: string, updater: (c: Character) => Character) {
     setCharacters(prev => {
       const updatedCharacters = prev.map(c =>
         c.id === id ? updater(c) : c
       )
 
-      // Enviar a atualização para o backend
       axios
         .put(`${API_URL}/${id}`, updatedCharacters.find(c => c.id === id))
         .catch(error => {
