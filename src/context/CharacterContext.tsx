@@ -1,55 +1,53 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import axios from 'axios'
 import { Character } from '../types/Character'
-import { mockCharacters } from '../data/mockCharacter'
 
 type CharacterContextType = {
   characters: Character[]
-  updateCharacter: (
-    id: string,
-    updater: (c: Character) => Character
-  ) => void
+  updateCharacter: (id: string, updater: (c: Character) => Character) => void
 }
 
-const CharacterContext = createContext<CharacterContextType | null>(
-  null
-)
+const CharacterContext = createContext<CharacterContextType | null>(null)
 
-const STORAGE_KEY = 'characters_data'
+const API_URL = 'http://localhost:5000/characters' // Endpoint da API
 
-export function CharacterProvider({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  const [characters, setCharacters] = useState<Character[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
+export function CharacterProvider({ children }: { children: React.ReactNode }) {
+  const [characters, setCharacters] = useState<Character[]>([])
+
+  // Carregar personagens da API
+  useEffect(() => {
+    async function fetchCharacters() {
       try {
-        return JSON.parse(stored)
-      } catch {
-        return mockCharacters
+        const { data } = await axios.get(API_URL)
+        setCharacters(data)
+      } catch (error) {
+        console.error('Erro ao carregar personagens', error)
       }
     }
-    return mockCharacters
-  })
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(characters))
-  }, [characters])
+    fetchCharacters()
+  }, [])
 
-  function updateCharacter(
-    id: string,
-    updater: (c: Character) => Character
-  ) {
-    setCharacters(prev =>
-      prev.map(c => (c.id === id ? updater(c) : c))
-    )
+  // Função para atualizar personagem
+  function updateCharacter(id: string, updater: (c: Character) => Character) {
+    setCharacters(prev => {
+      const updatedCharacters = prev.map(c =>
+        c.id === id ? updater(c) : c
+      )
+
+      // Enviar a atualização para o backend
+      axios
+        .put(`${API_URL}/${id}`, updatedCharacters.find(c => c.id === id))
+        .catch(error => {
+          console.error('Erro ao atualizar personagem', error)
+        })
+
+      return updatedCharacters
+    })
   }
 
   return (
-    <CharacterContext.Provider
-      value={{ characters, updateCharacter }}
-    >
+    <CharacterContext.Provider value={{ characters, updateCharacter }}>
       {children}
     </CharacterContext.Provider>
   )
@@ -58,9 +56,7 @@ export function CharacterProvider({
 export function useCharacters() {
   const ctx = useContext(CharacterContext)
   if (!ctx) {
-    throw new Error(
-      'useCharacters deve ser usado dentro de CharacterProvider'
-    )
+    throw new Error('useCharacters deve ser usado dentro de CharacterProvider')
   }
   return ctx
 }
