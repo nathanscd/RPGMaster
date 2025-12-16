@@ -6,13 +6,15 @@ type CharacterContextType = {
   characters: Character[]
   updateCharacter: (
     id: string,
-    fn: (c: Character) => Character
+    updater: (c: Character) => Character
   ) => void
 }
 
-const CharacterContext = createContext<CharacterContextType | null>(null)
+const CharacterContext = createContext<CharacterContextType | null>(
+  null
+)
 
-const STORAGE_KEY = 'rpg_characters'
+const STORAGE_KEY = 'characters_data'
 
 export function CharacterProvider({
   children
@@ -37,10 +39,10 @@ export function CharacterProvider({
 
   function updateCharacter(
     id: string,
-    fn: (c: Character) => Character
+    updater: (c: Character) => Character
   ) {
     setCharacters(prev =>
-      prev.map(c => (c.id === id ? fn(c) : c))
+      prev.map(c => (c.id === id ? updater(c) : c))
     )
   }
 
