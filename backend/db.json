@@ -41,6 +41,32 @@
       "inventario": [],
       "inventarioMaxPeso": 10,
       "id": "1"
+    },
+    {
+      "_id": "b14ab817-a3b4-460e-bf93-5af57ee1f3da",
+      "nome": "Joe Wintski",
+      "classe": "Ocultista",
+      "origem": "",
+      "atributos": {
+        "For": 1,
+        "Agi": 1,
+        "Int": 1,
+        "Vig": 1,
+        "Pre": 1
+      },
+      "recursos": {
+        "vidaAtual": 20,
+        "vidaMaxima": 20,
+        "peAtual": 2,
+        "peMaximo": 2,
+        "sanidadeAtual": 20,
+        "sanidadeMaxima": 20
+      },
+      "inventario": [],
+      "habilidades": [],
+      "armas": [],
+      "inventarioMaxPeso": 5,
+      "id": "b14ab817-a3b4-460e-bf93-5af57ee1f3da"
     }
   ],
   "items": [

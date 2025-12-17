@@ -5,20 +5,74 @@ export default function Dashboard() {
   const { characters } = useCharacters()
 
   return (
-    <div className="main">
-      <h1 className="text-2xl font-bold">Personagens</h1>
-      <div className="profiles">
+    <div className="min-h-screen bg-black text-white p-6 md:p-12 flex flex-col items-center">
+      <div className="w-full max-w-6xl mb-12 flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter">
+            Meus <span className="text-blue-600">Agentes</span>
+          </h1>
+          <p className="text-zinc-500 text-sm mt-2">Selecione uma ficha para iniciar a missão</p>
+        </div>
+        
+        <Link 
+          to="/create" 
+          className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] uppercase text-xs"
+        >
+          + Novo Agente
+        </Link>
+      </div>
+
+      <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {characters.map(c => (
-          <div key={c.id} className="personagem">
-            <div>
-              <div className="font-semibold">{c.nome}</div>
-              <div className="text-sm text-zinc-400">{c.classe}</div>
-              <Link to={`/sheet/${c.id}`} className="text-blue-400">
-                Abrir Ficha
-              </Link>
+          <Link 
+            key={c.id} 
+            to={`/sheet/${c.id}`}
+            className="group relative bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl hover:border-blue-500 hover:shadow-[0_0_30px_rgba(37,99,235,0.1)] transition-all overflow-hidden"
+          >
+            <div className="absolute -right-4 -top-4 text-8xl font-black text-white/[0.03] italic group-hover:text-blue-500/10 transition-colors">
+              {c.classe?.substring(0, 3)}
             </div>
-          </div>
+
+            <div className="relative z-10">
+              <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">
+                {c.origem || 'Agente'}
+              </span>
+              
+              <h2 className="text-2xl font-bold text-white mt-1 group-hover:text-blue-400 transition-colors">
+                {c.nome}
+              </h2>
+              
+              <p className="text-zinc-400 text-sm font-medium uppercase tracking-widest mt-1">
+                {c.classe}
+              </p>
+
+              <div className="mt-8 flex items-center justify-between">
+                <div className="flex gap-3">
+                   <div className="text-center">
+                     <p className="text-[9px] text-zinc-500 uppercase font-bold">NEX</p>
+                     <p className="text-sm font-bold text-zinc-200">5%</p>
+                   </div>
+                   <div className="w-[1px] h-8 bg-zinc-800" />
+                   <div className="text-center">
+                     <p className="text-[9px] text-zinc-500 uppercase font-bold">Vida</p>
+                     <p className="text-sm font-bold text-red-500">{c.recursos?.vidaMaxima || 0}</p>
+                   </div>
+                </div>
+
+                <span className="text-xs font-black text-blue-600 group-hover:translate-x-1 transition-transform">
+                  ACESSAR FICHA →
+                </span>
+              </div>
+            </div>
+          </Link>
         ))}
+
+        {/* CARD VAZIO (Placeholder) */}
+        {characters.length === 0 && (
+          <div className="col-span-full py-20 text-center border-2 border-dashed border-zinc-800 rounded-2xl">
+            <p className="text-zinc-500 font-bold uppercase tracking-widest">Nenhum agente recrutado</p>
+          </div>
+        )}
       </div>
     </div>
   )
