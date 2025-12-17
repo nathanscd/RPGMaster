@@ -1,27 +1,40 @@
 import express from 'express'
-import mongoose from 'mongoose'
 import cors from 'cors'
-import characterRoutes from './routes/characters.js'
+import { JSONFilePreset } from 'lowdb/node'
+import characterRoutes from './characters.js'
+import { v4 as uuidv4 } from 'uuid' 
 
 const app = express()
-
 app.use(cors())
 app.use(express.json())
 
-mongoose
-  .connect('mongodb://127.0.0.1:27017/rpgmaster')
-  .then(() => console.log('MongoDB conectado'))
-  .catch(err => console.error(err))
+const defaultData = { characters: [], items: [] }
+export const db = await JSONFilePreset('db.json', defaultData)
 
-// Rota de saúde
+console.log('Banco de dados Local (JSON) pronto')
+
 app.get('/health', (req, res) => {
-  res.json({ ok: true })
+  res.json({ ok: true, storage: 'local-json' })
 })
 
-// Rota de personagens
 app.use('/api/characters', characterRoutes)
+
+app.get('/api/items', (req, res) => {
+  const items = db.data.items || []
+  res.json(items)
+})
+
+app.post('/api/items', async (req, res) => {
+  const newItem = {
+    id: uuidv4(),
+    ...req.body
+  }
+  db.data.items.push(newItem)
+  await db.write()
+  res.json(newItem)
+})
 
 const port = 3001
 app.listen(port, () => {
-  console.log('Servidor rodando na porta', port)
+  console.log(`Servidor rodando em http://localhost:${port}`)
 })

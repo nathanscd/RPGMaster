@@ -1,10 +1,5 @@
-import mongoose from 'mongoose'
+import { JSONFilePreset } from 'lowdb/node'
 
-export function connectDB() {
-  mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('MongoDB conectado'))
-    .catch(err => {
-      console.error(err)
-      process.exit(1)
-    })
-}
+const defaultData = { characters: [] }
+
+export const db = await JSONFilePreset('db.json', defaultData)

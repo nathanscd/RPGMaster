@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js --ignore db.json"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +17,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.2.1",
-    "mongoose": "^9.0.1"
+    "lowdb": "^7.0.1",
+    "mongoose": "^9.0.1",
+    "uuid": "^13.0.0"
   }
 }

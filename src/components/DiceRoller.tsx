@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { DiceExpression } from '../types/Character'
+import { DiceRoll } from '../types/Character'
 
 type Props = {
   label: string
-  roll: DiceExpression
+  roll: DiceRoll
 }
 
 export default function DiceRoller({ label, roll }: Props) {

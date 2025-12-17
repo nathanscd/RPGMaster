@@ -18,7 +18,13 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
     async function fetchCharacters() {
       try {
         const { data } = await axios.get(API_URL)
-        setCharacters(data)
+        
+        const formattedData = data.map((char: any) => ({
+          ...char,
+          id: char._id || char.id 
+        }))
+
+        setCharacters(formattedData)
       } catch (error) {
         console.error('Erro ao carregar personagens', error)
       }
@@ -29,20 +35,22 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
 
   function updateCharacter(id: string, updater: (c: Character) => Character) {
     setCharacters(prev => {
-      const updatedCharacters = prev.map(c =>
-        (c as any)._id === id ? updater(c) : c
-      )
+      const index = prev.findIndex(c => c.id === id || (c as any)._id === id)
+      
+      if (index === -1) return prev
 
-      const updatedCharacter = updatedCharacters.find(c => (c as any)._id === id)
-      if (updatedCharacter) {
-        axios
-          .put(`${API_URL}/${id}`, updatedCharacter)
-          .catch(error => {
-            console.error('Erro ao atualizar personagem', error)
-          })
-      }
+      const oldChar = prev[index]
+      const newChar = updater(oldChar)
+      
+      const updatedList = [...prev]
+      updatedList[index] = newChar
+      axios
+        .put(`${API_URL}/${id}`, newChar)
+        .catch(error => {
+          console.error('Erro ao atualizar personagem', error)
+        })
 
-      return updatedCharacters
+      return updatedList
     })
   }
 

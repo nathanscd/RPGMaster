@@ -1,24 +1,26 @@
-export type DiceExpression = {
+export type DiceRoll = {
   quantidade: number
   dado: number
   modificador?: number
 }
 
-export type InventoryItem = {
-  id: string
+export type RollableItem = {
   nome: string
-  peso: number
-  tipo?: 'arma' | 'item'
-  roll?: {
+  roll: {
     quantidade: number
     dado: number
     modificador?: number
   }
 }
 
-export type Rollable = {
+export type InventoryItem = {
+  id: string
+  instanceId?: number 
   nome: string
-  roll: DiceExpression
+  peso: number
+  tipo: string 
+  roll?: DiceRoll
+  descricao?: string
 }
 
 export type Character = {
@@ -26,15 +28,39 @@ export type Character = {
   nome: string
   classe: string
   origem: string
-
-  atributos: Record<string, number>
-  recursos: Record<string, number>
-  defesa: Record<string, number>
-  pericias: Record<string, number>
-
-  habilidades: Rollable[]
-  armas: Rollable[]
-
+  atributos: {
+    For: number
+    Agi: number
+    Int: number
+    Vig: number
+    Pre: number
+  }
+  recursos: {
+    vidaAtual: number
+    vidaMaxima: number
+    peAtual: number
+    peMaximo: number
+    sanidadeAtual: number
+    sanidadeMaxima: number
+  }
+  defesa: {
+    passiva: number
+    pontos: number
+    [key: string]: number 
+  }
+  pericias: {
+    [key: string]: number
+  }
+  habilidades: {
+    nome: string
+    roll?: DiceRoll
+    descricao?: string
+  }[]
+  armas: {
+    nome: string
+    roll: DiceRoll
+    descricao?: string
+  }[]
   inventario: InventoryItem[]
   inventarioMaxPeso: number
 }
