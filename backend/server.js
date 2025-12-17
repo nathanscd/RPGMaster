@@ -5,7 +5,13 @@ import characterRoutes from './characters.js'
 import { v4 as uuidv4 } from 'uuid' 
 
 const app = express()
-app.use(cors())
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type']
+}))
+
 app.use(express.json())
 
 const defaultData = { characters: [], items: [] }
@@ -34,7 +40,8 @@ app.post('/api/items', async (req, res) => {
   res.json(newItem)
 })
 
-const port = 3001
-app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`)
+const port = process.env.PORT || 3001
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${port}`)
 })

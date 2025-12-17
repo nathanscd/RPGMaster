@@ -6,7 +6,7 @@
       "classe": "Combatente",
       "origem": "Acadêmico",
       "atributos": {
-        "For": 3,
+        "For": 2,
         "Agi": 2,
         "Int": 3,
         "Vig": 3,
@@ -31,7 +31,6 @@
       "habilidades": [
         {
           "nome": "Decadência",
-          "descricao": "Você projeta uma espiral de energia de morte. Discente (+2 PE): aumenta o dano para 4d8+4.",
           "roll": {
             "quantidade": 2,
             "dado": 8
@@ -44,13 +43,12 @@
       "id": "1"
     }
   ],
-
-"items": [
+  "items": [
     {
       "id": "rev",
       "nome": "Revólver",
       "peso": 2,
-      "tipo": "arma", 
+      "tipo": "arma",
       "roll": {
         "quantidade": 2,
         "dado": 8
@@ -60,7 +58,7 @@
       "id": "lan",
       "nome": "Lanterna",
       "peso": 1,
-      "tipo": "Utilitário" 
+      "tipo": "Utilitário"
     },
     {
       "id": "kit",

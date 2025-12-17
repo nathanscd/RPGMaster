@@ -9,7 +9,8 @@ type CharacterContextType = {
 
 const CharacterContext = createContext<CharacterContextType | null>(null)
 
-const API_URL = 'http://localhost:3001/api/characters'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_URL = `${API_BASE}/api/characters`
 
 export function CharacterProvider({ children }: { children: React.ReactNode }) {
   const [characters, setCharacters] = useState<Character[]>([])
@@ -44,6 +45,7 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
       
       const updatedList = [...prev]
       updatedList[index] = newChar
+
       axios
         .put(`${API_URL}/${id}`, newChar)
         .catch(error => {
