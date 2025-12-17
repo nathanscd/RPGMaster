@@ -176,7 +176,7 @@ export default function SheetView() {
                />
              ))}
              <div className="h-px bg-zinc-800 my-2"></div>
-             <h1 className="text-xl font-bold text-white">Perícias</h1>
+             <h2 className="text-xl font-bold text-blue">Perícias</h2>
              {character.pericias && Object.entries(character.pericias).map(([k, v]) => (
                <NumericField 
                  key={k} 
