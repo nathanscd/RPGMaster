@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 const app = express()
 
 app.use(cors({
-  origin: '*',
+  origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type']
 }))

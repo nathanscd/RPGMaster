@@ -2,25 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================
+   DEFINIÇÃO DOS TEMAS
+   ========================================= */
+:root[data-theme='mystery'] {
+  --bg-app: #000000;
+  --bg-card: #050505;
+  --bg-input: #0a0a0a;
+  --border-color: #172554;
+  --border-hover: #1e40af;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.2);
+  --text-main: #e4e4e7;
+}
+
+:root[data-theme='medieval'] {
+  --bg-app: #12140e;
+  --bg-card: #1a1c15;
+  --bg-input: #0d0e0a;
+  --border-color: #3f4236;
+  --border-hover: #4d7c0f;
+  --accent: #22c55e;
+  --accent-glow: rgba(34, 197, 94, 0.2);
+  --text-main: #d1d5db;
+}
+
+:root[data-theme='scifi'] {
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --border-color: #334155;
+  --border-hover: #94a3b8;
+  --accent: #94a3b8;
+  --accent-glow: rgba(148, 163, 184, 0.2);
+  --text-main: #f1f5f9;
+}
+
+/* Fallback para Mystery se nenhum tema for setado */
 :root {
   font-family: 'Inter', system-ui, sans-serif;
   color-scheme: dark;
-
-  --bg-app: #000000;  
-  --bg-card: #050505; 
-  --bg-input: #0a0a0a; 
-  
-  --border-color: #172554;  
-  --border-hover: #1e40af;  
-  --accent: #3b82f6; 
+  --bg-app: #000000;
+  --bg-card: #050505;
+  --bg-input: #0a0a0a;
+  --border-color: #172554;
+  --accent: #3b82f6;
   --accent-glow: rgba(59, 130, 246, 0.2);
+  --text-main: #e4e4e7;
 }
 
+/* =========================================
+   ESTILOS GERAIS
+   ========================================= */
 body {
   background-color: var(--bg-app);
-  color: #e4e4e7; 
+  color: var(--text-main);
   margin: 0;
   min-height: 100vh;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 #root {
@@ -31,9 +70,6 @@ body {
   align-items: flex-start;
 }
 
-/* =========================================
-   INPUTS ESTILIZADOS
-   ========================================= */
 input, select, textarea {
   background-color: var(--bg-input);
   color: white;
@@ -48,15 +84,6 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; margin: 0; 
-}
-input[type=number] { -moz-appearance: textfield; }
-
-/* =========================================
-   ESTRUTURA (LAYOUT)
-   ========================================= */
 .viewport {
   display: flex;
   flex-direction: row;
@@ -69,23 +96,26 @@ input[type=number] { -moz-appearance: textfield; }
   margin: 0 auto;
 }
 
-/* SIDEBAR (Ficha) */
-.char {
+/* Sidebar e Cards usando as variáveis */
+.char, .Section {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.5s ease;
+}
+
+.char {
   width: 380px;
   min-width: 320px;
   flex-shrink: 0;
-  border-radius: 12px;
-  padding: 1.5rem;
   position: sticky;
   top: 1.5rem;
   max-height: calc(100vh - 3rem);
   overflow-y: auto;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8); 
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
-/* ÁREA DIREITA */
 .various {
   display: flex;
   flex-direction: column;
@@ -94,27 +124,15 @@ input[type=number] { -moz-appearance: textfield; }
   width: 100%;
 }
 
-/* CARDS (Seções) */
-.Section {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: 100%;
-}
-
 .Section h2 {
-  color: var(--accent); 
+  color: var(--accent);
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
 }
 
-/* =========================================
-   ITENS E BOTÕES
-   ========================================= */
 .item {
-  background-color: #000;
+  background-color: rgba(0,0,0,0.3);
   border: 1px solid var(--border-color);
   padding: 0.75rem;
   border-radius: 8px;
@@ -123,18 +141,12 @@ input[type=number] { -moz-appearance: textfield; }
   align-items: center;
 }
 
-button {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-/* Scrollbar Azul Escura */
+/* Scrollbar Dinâmica */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 3px; }
+::-webkit-scrollbar-track { background: var(--bg-app); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-/* Responsividade */
 @media (max-width: 850px) {
   .viewport { flex-direction: column; align-items: center; }
   .char { width: 100%; max-width: 500px; position: relative; top: 0; max-height: none; }

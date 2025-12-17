@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 
-// Componente Interno para o Select Customizado
 function CustomSelect({ value, onChange }: { value: string, onChange: (v: string) => void }) {
   const [isOpen, setIsOpen] = useState(false)
   const options = ['Combatente', 'Especialista', 'Ocultista']
@@ -11,15 +10,15 @@ function CustomSelect({ value, onChange }: { value: string, onChange: (v: string
     <div className="relative">
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white cursor-pointer flex justify-between items-center hover:border-blue-500 transition-all"
+        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white cursor-pointer flex justify-between items-center hover:border-[var(--accent)] transition-all"
       >
         <span className="font-bold uppercase tracking-widest text-sm">{value}</span>
-        <span className={`text-blue-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+        <span className={`text-[var(--accent)] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </div>
 
       {isOpen && (
         <>
-          <div className="absolute z-50 w-full mt-2 bg-zinc-950 border border-blue-900/50 rounded-lg overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {options.map(opt => (
               <div
                 key={opt}
@@ -28,7 +27,7 @@ function CustomSelect({ value, onChange }: { value: string, onChange: (v: string
                   setIsOpen(false)
                 }}
                 className={`p-3 cursor-pointer transition-colors font-bold text-xs uppercase tracking-[0.2em]
-                  ${value === opt ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:bg-blue-900/30 hover:text-white'}
+                  ${value === opt ? 'bg-[var(--accent)] text-white' : 'text-zinc-500 hover:bg-[var(--accent-glow)] hover:text-white'}
                 `}
               >
                 {opt}
@@ -80,14 +79,14 @@ export default function CreateAgent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center">
-      <div className="w-full max-w-md bg-zinc-900/40 border border-zinc-800 p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
+    <div className="min-h-screen bg-[var(--bg-app)] text-white p-6 flex flex-col items-center justify-center transition-colors duration-500">
+      <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
         <header className="mb-8">
           <h1 className="text-3xl font-black uppercase tracking-tighter">
-            Recrutar <span className="text-blue-600">Agente</span>
+            Recrutar <span className="text-[var(--accent)]">Agente</span>
           </h1>
-          <div className="h-1 w-12 bg-blue-600 mt-1" />
-          <p className="text-zinc-500 text-xs mt-3 uppercase tracking-widest font-bold">Iniciando protocolo de registro</p>
+          <div className="h-1 w-12 bg-[var(--accent)] mt-1" />
+          <p className="text-zinc-500 text-xs mt-3 uppercase tracking-widest font-bold opacity-60">Iniciando protocolo de registro</p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -97,7 +96,7 @@ export default function CreateAgent() {
               type="text"
               value={nome}
               onChange={e => setNome(e.target.value)}
-              className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-all placeholder:text-zinc-700 font-bold"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none transition-all font-bold"
             />
           </div>
 
@@ -113,20 +112,20 @@ export default function CreateAgent() {
               value={origem}
               onChange={e => setOrigem(e.target.value)}
               placeholder="Ex: Acadêmico"
-              className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-all placeholder:text-zinc-700 font-bold"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none transition-all placeholder:text-zinc-800 font-bold"
             />
           </div>
 
           <div className="flex gap-4 pt-6">
             <Link 
               to="/" 
-              className="flex-1 text-center py-3 border border-zinc-800 rounded-lg font-black text-xs text-zinc-500 hover:bg-zinc-800 hover:text-white transition-all uppercase tracking-widest"
+              className="flex-1 text-center py-3 border border-[var(--border-color)] rounded-lg font-black text-xs text-zinc-500 hover:bg-[var(--border-color)] hover:text-white transition-all uppercase tracking-widest"
             >
               Abortar
             </Link>
             <button 
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_25px_rgba(37,99,235,0.2)] transition-all active:scale-95"
+              className="flex-1 bg-[var(--accent)] hover:opacity-80 text-white py-3 rounded-lg font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_25px_var(--accent-glow)] transition-all active:scale-95"
             >
               Confirmar
             </button>
