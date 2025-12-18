@@ -178,16 +178,6 @@ export default function Rulebook() {
           )}
 
         </div>
-
-        <footer className="mt-32 mb-12 py-12 border-t border-zinc-900 flex flex-col items-center gap-4">
-          <div className="flex gap-8 text-zinc-800 font-black text-[8px] uppercase tracking-[0.8em]">
-            <span>Ordem Paranormal</span>
-            <span>Acesso Nível 4</span>
-            <span>2025</span>
-          </div>
-          <p className="text-zinc-600 font-bold text-[7px] uppercase tracking-[0.2em]">O Conhecimento é a Única Proteção Contra o Medo</p>
-        </footer>
-
       </div>
     </div>
   )
