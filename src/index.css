@@ -141,7 +141,19 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
 }
 
-/* Scrollbar Dinâmica */
+.filter{
+  position: absolute;
+  top: -1000px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 10000dvh;
+  background-color: rgba(0, 0, 0, 0.50);
+  z-index: 30;
+  pointer-events: none;
+  transition: opacity 300ms;
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-app); }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }

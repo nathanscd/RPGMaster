@@ -47,6 +47,15 @@ export default function Dashboard() {
         >
           + Novo Registro
         </Link> */}
+
+        <div className="flex gap-4">
+          <Link 
+            to="/map" 
+            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
+          >
+            🗺️ Mapa
+          </Link>
+        </div>
       </div>
 
       <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
