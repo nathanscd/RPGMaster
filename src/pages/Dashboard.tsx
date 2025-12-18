@@ -41,15 +41,14 @@ export default function Dashboard() {
           </p>
         </div>
         
-        <Link 
+        {/* <Link 
           to="/create" 
           className="bg-[var(--accent)] hover:opacity-90 text-white px-6 py-3 rounded-lg font-black transition-all shadow-[0_0_20px_var(--accent-glow)] uppercase text-xs tracking-widest"
         >
           + Novo Registro
-        </Link>
+        </Link> */}
       </div>
 
-      {/* GRID DE CARDS */}
       <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {characters.map(c => (
           <div key={c.id} className="group relative">
@@ -57,12 +56,10 @@ export default function Dashboard() {
               to={`/sheet/${c.id}`}
               className="block h-full bg-[var(--bg-card)] border border-[var(--border-color)] p-8 rounded-2xl hover:border-[var(--accent)] transition-all overflow-hidden relative"
             >
-              {/* Texto de Fundo Corrigido (z-0 e pointer-events-none) */}
               <div className="absolute -right-2 -top-2 text-7xl font-black text-white/[0.02] italic group-hover:text-[var(--accent-glow)] transition-colors z-0 pointer-events-none select-none">
                 {c.classe?.substring(0, 3).toUpperCase()}
               </div>
 
-              {/* Conteúdo (z-10 para ficar acima do texto de fundo) */}
               <div className="relative z-10 flex flex-col h-full justify-between">
                 <div>
                   <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.3em] opacity-80">
@@ -97,8 +94,7 @@ export default function Dashboard() {
               </div>
             </Link>
 
-            {/* BOTÃO DELETAR POSICIONADO FORA DO CONTEÚDO PRINCIPAL */}
-            <button 
+            {/*<button 
               onClick={(e) => {
                 e.preventDefault();
                 setDeleteId(c.id);
@@ -106,7 +102,7 @@ export default function Dashboard() {
               className="absolute top-4 right-4 z-30 p-2 bg-red-950/30 text-red-500 border border-red-900/30 rounded-lg hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md"
             >
               🗑️
-            </button>
+            </button> */}
           </div>
         ))}
 
@@ -117,7 +113,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO (ESTILO TEMA) */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-zinc-950 border border-red-900/50 p-10 rounded-3xl max-w-sm w-full text-center shadow-[0_0_80px_rgba(220,38,38,0.2)] animate-in zoom-in-95 duration-300">
@@ -141,7 +136,7 @@ export default function Dashboard() {
               >
                 Abortar
               </button>
-            </div>
+            </div> */
           </div>
         </div>
       )}
