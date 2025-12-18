@@ -16,8 +16,8 @@ export default function MapArea() {
   const transformComponentRef = useRef<any>(null)
 
   const maps = [
-    { name: 'Cenário Principal', url: 'src/static/37ffa8f054f6c94695abd202bdb35d50.webp' },
-    { name: 'Cenário Alternativo', url: 'src/static/b32903f64bb78648639117e1e0f12ea9.avif' }
+    { name: 'Cenário Principal', url: 'public/37ffa8f054f6c94695abd202bdb35d50.webp' },
+    { name: 'Cenário Alternativo', url: 'public/b32903f64bb78648639117e1e0f12ea9.avif' }
   ]
 
   const spawnPlayer = (char: any) => {

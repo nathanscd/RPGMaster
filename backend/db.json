@@ -3,7 +3,7 @@
     {
       "_id": "1",
       "nome": "Arthur Cervero",
-      "foto": "src/static/arthur.png",
+      "foto": "/public/arthur.png",
       "classe": "Combatente",
       "origem": "Acadêmico",
       "atributos": {
