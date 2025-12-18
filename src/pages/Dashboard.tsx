@@ -55,6 +55,13 @@ export default function Dashboard() {
           >
             🗺️ Mapa
           </Link>
+
+          <Link 
+            to="/rules" 
+            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
+          >
+            Livro de Regras
+          </Link>
         </div>
       </div>
 

@@ -59,6 +59,27 @@ export default function SheetView() {
   return (
     <div className="viewport">
       <div className="char">
+          <Link 
+            to="/" 
+            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
+          >
+            ⬅ Voltar
+          </Link>
+        <div className="flex gap-4 mb-5 mt-5">
+          <Link 
+            to="/map" 
+            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
+          >
+            🗺️ Mapa
+          </Link>
+
+          <Link 
+            to="/rules" 
+            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
+          >
+            Livro de Regras
+          </Link>
+        </div>
         <div className="Player border-zinc-800 pb-4 mb-2 ml-5">
           <h1 className="text-3xl font-bold text-white leading-tight">{character.nome}</h1>
           <div className="flex flex-wrap gap-2 text-zinc-400 mt-2 text-xs uppercase tracking-wider">

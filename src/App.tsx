@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Sheet from './pages/SheetView'
 import CreateAgent from './pages/CreateAgent'
 import MapArea from './pages/MapArea'
+import Rulebook from './pages/Rules'
 
 function App() {
   return (
@@ -11,7 +12,8 @@ function App() {
       <Route path="/" element={<Dashboard />} />
       <Route path="/create" element={<CreateAgent />} />
       <Route path="/sheet/:id" element={<Sheet />} />
-      <Route path="/map" element={<MapArea />} /> {/* Nova rota */}
+      <Route path="/map" element={<MapArea />} /> 
+      <Route path="/rules" element={<Rulebook />} /> 
     </Routes>
   )
 }
