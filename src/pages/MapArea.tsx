@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 import { useCharacters } from '../context/CharacterContext'
 import { Character, MapToken as MapTokenType } from '../types/Character'
+import { useFirestoreTokens } from '../hooks/useFirestoreTokens'
 
 type ExtendedMapToken = MapTokenType & { condicoes?: string[] }
 
@@ -13,7 +14,7 @@ interface MapTokenProps {
   mapScale: number
   visaoNoturna: boolean
   getCharData: (token: ExtendedMapToken) => (Character & ExtendedMapToken) | ExtendedMapToken | null
-  rotacionarToken: (e: React.MouseEvent | React.TouchEvent, id: string) => void
+  rotacionarToken: (e: React.MouseEvent | React.TouchEvent, id: string, angulo: number) => void
   handleTokenClick: (e: React.MouseEvent | React.TouchEvent | any, t: ExtendedMapToken, isDragStart?: boolean) => void
   updateTokenPos: (id: string, x: number, y: number) => void
   showStatus: boolean
@@ -43,14 +44,13 @@ const MapToken = React.memo(({
   const vidaMaxima = data?.recursos?.vidaMaxima || 1
   const sanidadeAtual = data?.recursos?.sanidadeAtual || 0
   const sanidadeMaxima = data?.recursos?.sanidadeMaxima || 1
-
   const condicoes = token.condicoes || []
 
   return (
     <Draggable
       key={token.id}
       scale={mapScale}
-      defaultPosition={{x: token.x, y: token.y}}
+      position={{x: token.x, y: token.y}}
       onStop={(e, d) => updateTokenPos(token.id, d.x, d.y)}
       onStart={() => {
         if (!isSelected) handleTokenClick({ stopPropagation: () => {}, type: 'drag' } as any, token, true)
@@ -59,7 +59,7 @@ const MapToken = React.memo(({
     >
       <div
         className="absolute top-0 left-0 z-40 group cursor-grab active:cursor-grabbing touch-none select-none"
-        onContextMenu={(e) => rotacionarToken(e, token.id)}
+        onContextMenu={(e) => rotacionarToken(e, token.id, (token.rotacao + 45) % 360)}
         onClick={(e) => handleTokenClick(e, token)}
         onTouchEnd={(e) => handleTokenClick(e, token)}
       >
@@ -161,8 +161,9 @@ ResourceControl.displayName = 'ResourceControl'
 interface StatusPopupProps {
   selectedData: (Character & ExtendedMapToken) | ExtendedMapToken
   handleUpdateResource: (id: string, type: 'player' | 'other', resource: string, value: number) => void
-  toggleLanterna: (id: string) => void
+  toggleLanterna: (id: string, active: boolean) => void
   toggleCondition: (id: string, condition: string) => void
+  removeToken: (id: string) => void
   setSelectedToken: (token: null) => void
   setShowStatus: (show: boolean) => void
 }
@@ -172,6 +173,7 @@ const StatusPopup = React.memo(({
   handleUpdateResource,
   toggleLanterna,
   toggleCondition,
+  removeToken,
   setSelectedToken,
   setShowStatus
 }: StatusPopupProps) => {
@@ -235,7 +237,7 @@ const StatusPopup = React.memo(({
 
         <div className="pt-4 border-t border-zinc-800 flex flex-col space-y-3">
           <button
-            onClick={() => toggleLanterna(selectedData.id)}
+            onClick={() => toggleLanterna(selectedData.id, !(selectedData as any).lanternaAtiva)}
             className={`w-full p-3 text-xs font-black uppercase rounded-xl transition-all ${(selectedData as any).lanternaAtiva ? 'bg-yellow-600/20 border border-yellow-500/50 text-yellow-400 shadow-lg' : 'bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:border-yellow-500/50'}`}
           >
             {(selectedData as any).lanternaAtiva ? 'Lanterna Ativa' : 'Ativar Lanterna'}
@@ -243,6 +245,7 @@ const StatusPopup = React.memo(({
 
           <button
             onClick={() => {
+              removeToken(selectedData.id)
               setSelectedToken(null)
               setShowStatus(false)
             }}
@@ -299,11 +302,13 @@ const DiceRoller = React.memo(({ onClose }: { onClose: () => void }) => {
 
 export default function MapArea() {
   const { characters, updateCharacter } = useCharacters()
+  // Usando o Hook do Firestore para tokens
+  const { tokens: activeTokens, addToken, updateToken, removeToken } = useFirestoreTokens()
+
   const [selectedToken, setSelectedToken] = useState<{ id: string, type: 'player' | 'other' } | null>(null)
   const [showStatus, setShowStatus] = useState(false)
   const [currentMap, setCurrentMap] = useState(0)
   const [visaoNoturna, setVisaoNoturna] = useState(false)
-  const [activeTokens, setActiveTokens] = useState<ExtendedMapToken[]>([])
   const [showSidebar, setShowSidebar] = useState(false)
   const [showDice, setShowDice] = useState(false)
   const [mapScale, setMapScale] = useState(1)
@@ -321,27 +326,27 @@ export default function MapArea() {
     { name: 'Floresta', url: '/b32903f64bb78648639117e1e0f12ea9.avif' }
   ]
 
-  const spawnPlayer = useCallback((char: Character) => {
+  const spawnPlayer = useCallback(async (char: Character) => {
     if (activeTokens.find(t => t.id === char.id)) {
       setShowSidebar(false)
       return
     }
-    setActiveTokens(prev => [...prev, {
+    await addToken({
       id: char.id,
       type: 'player',
       x: 750,
       y: 750,
       recursos: char.recursos,
       lanternaAtiva: false,
-      rotacao: 0,
+      rotacao: 90,
       condicoes: []
-    }])
+    })
     setShowSidebar(false)
-  }, [activeTokens])
+  }, [activeTokens, addToken])
 
-  const spawnNPC = useCallback(() => {
+  const spawnNPC = useCallback(async () => {
     const id = `npc-${Date.now()}`
-    setActiveTokens(prev => [...prev, {
+    await addToken({
       id,
       nome: 'Zumbi de Sangue',
       type: 'other',
@@ -352,46 +357,46 @@ export default function MapArea() {
       lanternaAtiva: false,
       rotacao: 0,
       condicoes: []
-    }])
+    })
     setShowSidebar(false)
-  }, [])
+  }, [addToken])
 
+  // Atualiza no BD (pode ser o personagem no contexto E o token no Firestore)
   const handleUpdateResource = useCallback((id: string, type: 'player' | 'other', resource: string, value: number) => {
     if (type === 'player') {
       updateCharacter(id, (char) => ({
         ...char,
         recursos: { ...char.recursos, [resource]: value }
       }))
-    } else {
-      setActiveTokens(prev => prev.map(t => t.id === id ? {
-        ...t, recursos: { ...t.recursos, [resource]: value }
-      } : t))
-    }
-  }, [updateCharacter])
+    } 
+    // Sempre atualiza o token visual no banco também
+    updateToken(id, { recursos: { ...selectedData?.recursos, [resource]: value } as any })
+  }, [updateCharacter, updateToken])
 
   const toggleCondition = useCallback((id: string, condition: string) => {
-      setActiveTokens(prev => prev.map(t => {
-          if (t.id !== id) return t;
-          const currentConditions = t.condicoes || []
-          const newConditions = currentConditions.includes(condition) 
-            ? currentConditions.filter(c => c !== condition)
-            : [...currentConditions, condition]
-          return { ...t, condicoes: newConditions }
-      }))
-  }, [])
+      const token = activeTokens.find(t => t.id === id)
+      if (!token) return
+
+      const currentConditions = token.condicoes || []
+      const newConditions = currentConditions.includes(condition) 
+        ? currentConditions.filter(c => c !== condition)
+        : [...currentConditions, condition]
+      
+      updateToken(id, { condicoes: newConditions })
+  }, [activeTokens, updateToken])
 
   const updateTokenPos = useCallback((id: string, x: number, y: number) => {
-    setActiveTokens(prev => prev.map(t => t.id === id ? { ...t, x, y } : t))
-  }, [])
+    updateToken(id, { x, y })
+  }, [updateToken])
 
-  const toggleLanterna = useCallback((id: string) => {
-    setActiveTokens(prev => prev.map(t => t.id === id ? { ...t, lanternaAtiva: !t.lanternaAtiva } : t))
-  }, [])
+  const toggleLanterna = useCallback((id: string, active: boolean) => {
+    updateToken(id, { lanternaAtiva: active })
+  }, [updateToken])
 
-  const rotacionarToken = useCallback((e: React.MouseEvent | React.TouchEvent, id: string) => {
+  const rotacionarToken = useCallback((e: React.MouseEvent | React.TouchEvent, id: string, angulo: number) => {
     e.preventDefault()
-    setActiveTokens(prev => prev.map(t => t.id === id ? { ...t, rotacao: t.rotacao + 45 } : t))
-  }, [])
+    updateToken(id, { rotacao: angulo })
+  }, [updateToken])
 
   const handleTokenClick = useCallback((e: React.MouseEvent | React.TouchEvent | any, t: ExtendedMapToken, isDragStart = false) => {
     e.stopPropagation?.()
@@ -558,7 +563,7 @@ export default function MapArea() {
                 <img src={maps[currentMap].url} className="block h-auto pointer-events-none" style={{ width: '1800px' }} />
 
                 {visaoNoturna && (
-                  <div className="filter" />
+                  <div className="absolute inset-0 bg-black/95 z-30 pointer-events-none transition-opacity duration-300" />
                 )}
 
                 {rulerStart && rulerEnd && isMeasuring && (
@@ -602,6 +607,7 @@ export default function MapArea() {
           handleUpdateResource={handleUpdateResource}
           toggleLanterna={toggleLanterna}
           toggleCondition={toggleCondition}
+          removeToken={removeToken}
           setSelectedToken={setSelectedToken}
           setShowStatus={setShowStatus}
         />
