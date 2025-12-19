@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Draggable from 'react-draggable'
 import { Link } from 'react-router-dom'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
@@ -11,9 +11,10 @@ interface MapTokenProps {
   mapScale: number
   visaoNoturna: boolean
   getCharData: (token: MapTokenType) => (Character & MapTokenType) | MapTokenType | null
-  rotacionarToken: (e: React.MouseEvent, id: string) => void
-  handleTokenClick: (e: React.MouseEvent | React.TouchEvent, t: MapTokenType, isDragStart?: boolean) => void
+  rotacionarToken: (e: React.MouseEvent | React.TouchEvent, id: string) => void
+  handleTokenClick: (e: React.MouseEvent | React.TouchEvent | any, t: MapTokenType, isDragStart?: boolean) => void
   updateTokenPos: (id: string, x: number, y: number) => void
+  showStatus: boolean
   isPanning: boolean
 }
 
@@ -26,13 +27,13 @@ const MapToken = React.memo(({
   rotacionarToken,
   handleTokenClick,
   updateTokenPos,
+  showStatus,
   isPanning
 }: MapTokenProps) => {
   const data = getCharData(token)
   const isSelected = selectedToken?.id === token.id
   const lanternaNoToken = token.lanternaAtiva && visaoNoturna
-
-  const isDraggableDisabled = isSelected && !isPanning
+  const isDraggableDisabled = (isSelected && showStatus) || isPanning
 
   const vidaAtual = data?.recursos?.vidaAtual || 0
   const vidaMaxima = data?.recursos?.vidaMaxima || 1
@@ -46,18 +47,18 @@ const MapToken = React.memo(({
       defaultPosition={{x: token.x, y: token.y}}
       onStop={(e, d) => updateTokenPos(token.id, d.x, d.y)}
       onStart={() => {
-        if (!isSelected) handleTokenClick({ stopPropagation: () => {} } as any, token, true)
+        if (!isSelected) handleTokenClick({ stopPropagation: () => {}, type: 'drag' } as any, token, true)
       }}
       disabled={isDraggableDisabled}
     >
       <div
-        className="absolute top-0 left-0 z-40 group cursor-grab active:cursor-grabbing"
+        className="absolute top-0 left-0 z-40 group cursor-grab active:cursor-grabbing touch-manipulation"
         onContextMenu={(e) => rotacionarToken(e, token.id)}
         onClick={(e) => handleTokenClick(e, token)}
         onTouchEnd={(e) => handleTokenClick(e, token)}
       >
         {lanternaNoToken && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] pointer-events-none z-10 transition-transform duration-100"
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[1200px] md:h-[1200px] pointer-events-none z-10 transition-transform duration-100"
             style={{
               transform: `translate(-50%, -50%) rotate(${token.rotacao - 90}deg)`,
               background: 'conic-gradient(from 0deg at 50% 50%, rgba(255,255,240,0.45) 0deg, rgba(255,255,240,0.45) 45deg, transparent 45deg)',
@@ -68,12 +69,12 @@ const MapToken = React.memo(({
           />
         )}
 
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-24 pointer-events-none z-[50] space-y-1.5">
-          <div className="h-2 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
+        <div className="absolute -top-10 md:-top-16 left-1/2 -translate-x-1/2 w-16 md:w-24 pointer-events-none z-[50] space-y-1 md:space-y-1.5">
+          <div className="h-1.5 md:h-2 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
             <div className={`h-full transition-all duration-500 ${token.type === 'player' ? 'bg-indigo-500' : 'bg-red-600'}`} style={{ width: `${(vidaAtual / vidaMaxima) * 100}%` }} />
           </div>
           {token.type === 'player' && sanidadeMaxima > 0 && (
-            <div className="h-1.5 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
+            <div className="h-1 md:h-1.5 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
               <div className="h-full bg-cyan-500 transition-all duration-500" style={{ width: `${(sanidadeAtual / sanidadeMaxima) * 100}%` }} />
             </div>
           )}
@@ -82,7 +83,7 @@ const MapToken = React.memo(({
         <div className="relative z-[40]">
           <img
             src={(data as any)?.foto || (token.type === 'player' ? 'https://i.pinimg.com/originals/ae/2e/56/ae2e562090e0ea66904128f898236113.png' : 'https://i.imgur.com/ae2e562.png')}
-            className={`w-32 h-32 object-contain pointer-events-none transition-all duration-300 ${isSelected ? 'brightness-125 ring-4 ring-indigo-500/50 rounded-full' : ''}`}
+            className={`w-20 h-20 md:w-40 md:h-40 object-contain pointer-events-none transition-all duration-300 ${isSelected ? 'brightness-125 ring-2 md:ring-4 ring-indigo-500/50 rounded-full' : ''}`}
             style={{ transform: `rotate(${token.rotacao}deg)` }}
           />
         </div>
@@ -102,9 +103,9 @@ interface ResourceControlProps {
 }
 
 const ResourceControl = React.memo(({ label, current, max, resourceKey, handleChange }: ResourceControlProps) => {
-  const [value, setValue] = React.useState(current)
+  const [value, setValue] = useState(current)
 
-  React.useEffect(() => {
+  useEffect(() => {
     setValue(current)
   }, [current])
 
@@ -165,18 +166,18 @@ const StatusPopup = React.memo(({
   if (!selectedData || !selectedData.recursos) return null
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-6 md:p-8 rounded-[2rem] w-[92%] md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10 md:slide-in-from-right-10" onClick={e => e.stopPropagation()}>
-      <div className="flex justify-between items-center mb-8">
+    <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border-t md:border border-zinc-800 p-6 md:p-8 rounded-t-[2rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10 md:slide-in-from-right-10 flex flex-col max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="flex justify-between items-center mb-6 md:mb-8 sticky top-0 bg-zinc-950/0 z-10">
         <div className="flex items-center gap-4">
-           <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 overflow-hidden shadow-2xl shrink-0">
+           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-black border border-zinc-800 overflow-hidden shadow-2xl shrink-0">
               <img src={(selectedData as any).foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
            </div>
-           <h3 className="text-white font-black uppercase text-lg italic truncate max-w-[140px]">{(selectedData as any).nome}</h3>
+           <h3 className="text-white font-black uppercase text-base md:text-lg italic truncate max-w-[140px]">{(selectedData as any).nome}</h3>
         </div>
-        <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white transition-colors text-3xl">✕</button>
+        <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white transition-colors text-2xl md:text-3xl p-2">✕</button>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 pb-4 md:pb-0">
         <ResourceControl
           label="Vida"
           current={vidaAtual || 0}
@@ -204,7 +205,10 @@ const StatusPopup = React.memo(({
           </button>
 
           <button
-            onClick={() => {}}
+            onClick={() => {
+              setSelectedToken(null)
+              setShowStatus(false)
+            }}
             className="w-full p-3 text-xs font-black uppercase bg-red-950/10 border border-red-900/20 rounded-xl text-red-500 hover:bg-red-900/20 transition-all"
           >
             Remover Token
@@ -228,7 +232,9 @@ export default function MapArea() {
   const [mapScale, setMapScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const transformComponentRef = useRef<any>(null)
+  
   const lastTap = useRef(0)
+  const touchHandled = useRef(false)
 
   const maps = [
     { name: 'Mansão', url: '/37ffa8f054f6c94695abd202bdb35d50.webp' },
@@ -247,7 +253,7 @@ export default function MapArea() {
       y: 750,
       recursos: char.recursos,
       lanternaAtiva: false,
-      rotacao: 90
+      rotacao: 0
     }])
     setShowSidebar(false)
   }, [activeTokens])
@@ -289,7 +295,7 @@ export default function MapArea() {
     setActiveTokens(prev => prev.map(t => t.id === id ? { ...t, lanternaAtiva: !t.lanternaAtiva } : t))
   }, [])
 
-  const rotacionarToken = useCallback((e: React.MouseEvent, id: string) => {
+  const rotacionarToken = useCallback((e: React.MouseEvent | React.TouchEvent, id: string) => {
     e.preventDefault()
     setActiveTokens(prev => prev.map(t => t.id === id ? { ...t, rotacao: t.rotacao + 45 } : t))
   }, [])
@@ -297,13 +303,20 @@ export default function MapArea() {
   const handleTokenClick = useCallback((e: React.MouseEvent | React.TouchEvent | any, t: MapTokenType, isDragStart = false) => {
     e.stopPropagation?.()
 
+    if (e.type === 'touchend') {
+        touchHandled.current = true
+        setTimeout(() => { touchHandled.current = false }, 500)
+    } else if (e.type === 'click' && touchHandled.current) {
+        return
+    }
+
     if (isDragStart) {
       setSelectedToken({ id: t.id, type: t.type })
       return
     }
 
     const now = Date.now()
-    const isDoubleClick = now - lastTap.current < 300
+    const isDoubleClick = now - lastTap.current < 600
 
     if (isDoubleClick) {
       setSelectedToken({ id: t.id, type: t.type })
@@ -316,27 +329,37 @@ export default function MapArea() {
     lastTap.current = now
   }, [showStatus])
 
-  const getCharData = useCallback((token: MapTokenType): (Character & MapTokenType) | MapTokenType | null => {
+  const getCharData = useCallback((token: MapTokenType | undefined): (Character & MapTokenType) | MapTokenType | null => {
     if (!token) return null
     if (token.type === 'player') {
       const dbChar = characters.find(c => c.id === token.id)
-      return dbChar ? { ...dbChar, ...token } as Character & MapTokenType : token
+      if (dbChar) {
+          return {
+              ...token,
+              ...dbChar,
+              x: token.x,
+              y: token.y,
+              rotacao: token.rotacao,
+              lanternaAtiva: token.lanternaAtiva
+          }
+      }
+      return token
     }
     return token
   }, [characters])
 
   const currentToken = activeTokens.find(t => t.id === selectedToken?.id)
-  const selectedData = getCharData(currentToken)
+  const selectedData = currentToken ? getCharData(currentToken) : null
 
   return (
     <div className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden flex flex-col select-none font-sans">
 
-      <div className="w-full p-3 md:p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center z-[200] shadow-2xl shrink-0">
-        <div className="flex gap-4 items-center">
-          <Link to="/" className="text-zinc-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] transition-all">← Sair</Link>
-          <button onClick={() => setShowSidebar(!showSidebar)} className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
-          <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão Noturna</button>
-          <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-4 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
+      <div className="w-full p-2 md:p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center z-[200] shadow-2xl shrink-0 overflow-x-auto">
+        <div className="flex gap-2 md:gap-4 items-center min-w-max">
+          <Link to="/" className="text-zinc-500 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all">← Sair</Link>
+          <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
+          <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão</button>
+          <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-3 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
         </div>
         <div className="hidden md:flex gap-2">
           {maps.map((m, idx) => (
@@ -346,19 +369,19 @@ export default function MapArea() {
       </div>
 
       <div className="flex-1 w-full flex overflow-hidden relative">
-        <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 absolute md:relative z-[150] w-72 h-full bg-zinc-950 border-r border-zinc-800 p-6 overflow-y-auto flex flex-col shadow-2xl shrink-0`}>
+        <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 absolute md:relative z-[150] w-64 md:w-72 h-full bg-zinc-950 border-r border-zinc-800 p-6 overflow-y-auto flex flex-col shadow-2xl shrink-0`}>
           <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-6 italic">Agentes</h3>
           <div className="grid grid-cols-1 gap-3 mb-10">
             {characters.map(c => (
-              <button key={c.id} onClick={() => spawnPlayer(c)} className="text-left p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-indigo-500 flex items-center gap-4 group transition-all">
-                <div className="w-12 h-12 rounded-lg bg-black border border-zinc-700 overflow-hidden shrink-0 shadow-lg">
+              <button key={c.id} onClick={(e) => { e.stopPropagation(); spawnPlayer(c); }} className="text-left p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-indigo-500 flex items-center gap-4 group transition-all">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-black border border-zinc-700 overflow-hidden shrink-0 shadow-lg">
                   <img src={c.foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
                 </div>
-                <span className="text-[10px] font-black uppercase text-zinc-300 group-hover:text-white truncate">{c.nome}</span>
+                <span className="text-[9px] md:text-[10px] font-black uppercase text-zinc-300 group-hover:text-white truncate">{c.nome}</span>
               </button>
             ))}
           </div>
-          <button onClick={spawnNPC} className="w-full p-4 bg-red-950/10 border border-red-900/20 rounded-xl text-[10px] font-black uppercase text-red-500 hover:bg-red-900/20 transition-all shadow-lg">+ NPC</button>
+          <button onClick={(e) => { e.stopPropagation(); spawnNPC(); }} className="w-full p-4 bg-red-950/10 border border-red-900/20 rounded-xl text-[10px] font-black uppercase text-red-500 hover:bg-red-900/20 transition-all shadow-lg">+ NPC</button>
         </div>
 
         <div className="relative flex-1 bg-black overflow-hidden">
@@ -395,6 +418,7 @@ export default function MapArea() {
                     handleTokenClick={handleTokenClick}
                     updateTokenPos={updateTokenPos}
                     isPanning={isPanning}
+                    showStatus={showStatus}
                   />
                 ))}
               </div>

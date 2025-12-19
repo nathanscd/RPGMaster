@@ -22,7 +22,7 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
         const { data } = await axios.get(API_URL)
         const formattedData = data.map((char: any) => ({
           ...char,
-          id: char._id || char.id 
+          id: char._id || char.id
         }))
         setCharacters(formattedData)
       } catch (error) {
@@ -39,7 +39,7 @@ export function CharacterProvider({ children }: { children: React.ReactNode }) {
 
       const oldChar = prev[index]
       const newChar = updater(oldChar)
-      
+
       const updatedList = [...prev]
       updatedList[index] = newChar
 

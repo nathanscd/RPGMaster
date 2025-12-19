@@ -23,9 +23,11 @@ export type InventoryItem = {
   descricao?: string
 }
 
-export type Character = {
+export interface Character {
   id: string
+  _id?: string
   nome: string
+  foto?: string
   classe: string
   origem: string
   atributos: {
@@ -38,29 +40,38 @@ export type Character = {
   recursos: {
     vidaAtual: number
     vidaMaxima: number
-    peAtual: number
-    peMaximo: number
+    peAtual?: number
+    peMaximo?: number
     sanidadeAtual: number
     sanidadeMaxima: number
   }
-  defesa: {
+  defesa?: {
     passiva: number
     pontos: number
-    [key: string]: number 
   }
-  pericias: {
-    [key: string]: number
+  pericias?: Record<string, number>
+  habilidades?: Array<{
+    nome: string
+    roll: { quantidade: number; dado: number }
+  }>
+  armas?: any[]
+  inventario?: any[]
+  inventarioMaxPeso?: number
+}
+
+export interface MapToken {
+  id: string
+  type: 'player' | 'other'
+  x: number
+  y: number
+  rotacao: number
+  lanternaAtiva: boolean
+  nome?: string
+  foto?: string
+  recursos: {
+    vidaAtual: number
+    vidaMaxima: number
+    sanidadeAtual: number
+    sanidadeMaxima: number
   }
-  habilidades: {
-    nome: string
-    roll?: DiceRoll
-    descricao?: string
-  }[]
-  armas: {
-    nome: string
-    roll: DiceRoll
-    descricao?: string
-  }[]
-  inventario: InventoryItem[]
-  inventarioMaxPeso: number
 }
