@@ -36,12 +36,12 @@ export default function MapArea() {
     const id = `npc-${Date.now()}`
     setActiveTokens([...activeTokens, { 
       id, 
-      nome: 'Ameaça', 
+      nome: 'Zumbi de Sangue', 
       type: 'other', 
       x: 800, 
       y: 800,
-      foto: 'https://i.imgur.com/027e8e5.png',
-      recursos: { vidaAtual: 50, vidaMaxima: 50, sanidadeAtual: 0, sanidadeMaxima: 0 },
+      foto: '/Miniatura_Zumbi_de_Sangue_em_Desconjura3Fo.webp',
+      recursos: { vidaAtual: 80, vidaMaxima: 100, sanidadeAtual: 0, sanidadeMaxima: 0 },
       lanternaAtiva: false,
       rotacao: 0
     }])
