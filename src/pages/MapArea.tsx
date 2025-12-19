@@ -136,7 +136,7 @@ export default function MapArea() {
                 <img src={maps[currentMap].url} className="block h-auto pointer-events-none" style={{ width: '1800px' }} />
                 
                 {visaoNoturna && (
-                  <div className="absolute inset-0 bg-black/90 z-30 pointer-events-none backdrop-blur-[2px] transition-opacity duration-300" />
+                  <div className="filter" />
                 )}
 
                 {activeTokens.map((t) => {
