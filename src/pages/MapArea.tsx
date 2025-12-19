@@ -16,8 +16,8 @@ export default function MapArea() {
   const transformComponentRef = useRef<any>(null)
 
   const maps = [
-    { name: 'Cenário Principal', url: 'public/37ffa8f054f6c94695abd202bdb35d50.webp' },
-    { name: 'Cenário Alternativo', url: 'public/b32903f64bb78648639117e1e0f12ea9.avif' }
+    { name: 'Cenário Principal', url: '/37ffa8f054f6c94695abd202bdb35d50.webp' },
+    { name: 'Cenário Alternativo', url: '/b32903f64bb78648639117e1e0f12ea9.avif' }
   ]
 
   const spawnPlayer = (char: any) => {
@@ -87,12 +87,14 @@ export default function MapArea() {
 
   return (
     <div className="fixed inset-0 w-full h-full bg-[#050505] overflow-hidden flex flex-col select-none touch-none font-sans">
+      
       <div className="w-full p-3 md:p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center z-[200] shadow-2xl shrink-0">
         <div className="flex gap-4 items-center">
           <Link to="/" className="text-zinc-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] transition-all">← Sair</Link>
           <button onClick={() => setShowSidebar(!showSidebar)} className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
           <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão Noturna</button>
           <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-4 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
+          <Link to="/regras" className="px-5 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase text-white hover:border-white transition-all text-center">Livro de Regras</Link>
         </div>
         <div className="hidden md:flex gap-2">
           {maps.map((m, idx) => (
@@ -130,11 +132,11 @@ export default function MapArea() {
             panning={{ disabled: !!selectedToken }}
           >
             <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
-              <div className="relative w-[2000px] h-[2000px] flex items-center justify-center" onClick={() => { setSelectedToken(null); setShowStatus(false); }}>
-                <img src={maps[currentMap].url} className="max-w-none block h-auto pointer-events-none" style={{ width: '1800px' }} />
+              <div className="relative inline-block" onClick={() => { setSelectedToken(null); setShowStatus(false); }}>
+                <img src={maps[currentMap].url} className="block h-auto pointer-events-none" style={{ width: '1800px' }} />
                 
                 {visaoNoturna && (
-                  <div className="filter" />
+                  <div className="absolute inset-0 bg-black/90 z-30 pointer-events-none backdrop-blur-[2px] transition-opacity duration-300" />
                 )}
 
                 {activeTokens.map((t) => {
@@ -152,7 +154,7 @@ export default function MapArea() {
                       disabled={isSelected && showStatus}
                     >
                       <div 
-                        className="absolute z-40 group cursor-grab active:cursor-grabbing" 
+                        className="absolute top-0 left-0 z-40 group cursor-grab active:cursor-grabbing" 
                         onContextMenu={(e) => rotacionarToken(e, t.id)} 
                         onDoubleClick={(e) => { 
                           e.stopPropagation(); 
@@ -162,13 +164,13 @@ export default function MapArea() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         {lanternaNoToken && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] pointer-events-none z-10 transition-transform duration-100"
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] pointer-events-none z-10"
                             style={{ 
                               transform: `translate(-50%, -50%) rotate(${t.rotacao - 90}deg)`,
                               background: 'conic-gradient(from 0deg at 50% 50%, rgba(255,255,240,0.45) 0deg, rgba(255,255,240,0.45) 45deg, transparent 45deg)',
                               WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 5%, transparent 60%)',
                               maskImage: 'radial-gradient(circle at 50% 50%, black 5%, transparent 60%)',
-                              filter: 'blur(12px)'
+                              filter: 'blur(15px)'
                             }}
                           />
                         )}
@@ -201,7 +203,7 @@ export default function MapArea() {
                  <div className="w-16 h-16 rounded-2xl bg-black border border-zinc-800 overflow-hidden shadow-2xl">
                     <img src={(selectedData as any).foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
                  </div>
-                 <h3 className="text-white font-black uppercase text-lg italic tracking-tighter truncate max-w-[140px]">{selectedData.nome}</h3>
+                 <h3 className="text-white font-black uppercase text-lg italic truncate max-w-[140px]">{selectedData.nome}</h3>
               </div>
               <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white transition-colors text-3xl">✕</button>
             </div>
@@ -209,7 +211,6 @@ export default function MapArea() {
               <div className="flex items-center justify-between p-5 bg-zinc-900/50 border border-zinc-800 rounded-3xl shadow-inner">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em]">Lanterna</span>
-                  <span className="hidden md:block text-[8px] text-zinc-500 uppercase font-bold mt-1 tracking-widest">Botão direito p/ rotacionar</span>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); toggleLanterna(selectedToken.id); }} className={`w-16 h-8 rounded-full transition-all relative ${currentToken?.lanternaAtiva ? 'bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'bg-zinc-800'}`}>
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-md ${currentToken?.lanternaAtiva ? 'left-9' : 'left-1'}`} />
@@ -231,18 +232,7 @@ export default function MapArea() {
                   <input type="range" min="0" max={selectedData.recursos.sanidadeMaxima} value={selectedData.recursos.sanidadeAtual} onChange={(e) => handleUpdateResource(selectedToken.id, selectedToken.type, 'sanidadeAtual', Number(e.target.value))} className="w-full h-2 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-cyan-600 shadow-inner" />
                 </div>
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!selectedToken) return
-                  setActiveTokens(prev => prev.filter(t => t.id !== selectedToken.id))
-                  setSelectedToken(null)
-                  setShowStatus(false)
-                }}
-                className="w-full py-5 bg-red-950/20 text-red-500 text-[10px] font-black uppercase border border-red-900/30 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-xl tracking-widest"
-              >
-                Eliminar da Mesa
-              </button>
+              <button onClick={() => { setActiveTokens(prev => prev.filter(t => t.id !== selectedToken.id)); setSelectedToken(null); setShowStatus(false); }} className="w-full py-5 bg-red-950/20 text-red-500 text-[10px] font-black uppercase border border-red-900/30 rounded-2xl hover:bg-red-600 hover:text-white shadow-xl tracking-widest">Eliminar da Mesa</button>
             </div>
           </div>
         )}
