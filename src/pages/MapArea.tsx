@@ -94,7 +94,6 @@ export default function MapArea() {
           <button onClick={() => setShowSidebar(!showSidebar)} className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
           <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão Noturna</button>
           <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-4 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
-          <Link to="/regras" className="px-5 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] font-black uppercase text-white hover:border-white transition-all text-center">Livro de Regras</Link>
         </div>
         <div className="hidden md:flex gap-2">
           {maps.map((m, idx) => (
