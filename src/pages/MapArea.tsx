@@ -2,9 +2,13 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Draggable from 'react-draggable'
 import { Link } from 'react-router-dom'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { useCharacters } from '../context/CharacterContext'
 import { Character, MapToken as MapTokenType } from '../types/Character'
 import { useFirestoreTokens } from '../hooks/useFirestoreTokens'
+import { useFirestoreCharacters } from '../hooks/useFirestoreCharacters'
+import { useAuth } from '../context/AuthContext'
+import { LoginPage } from '../components/LoginPage'
+import { db } from '../services/firebase'
+import { doc, onSnapshot, setDoc } from 'firebase/firestore'
 
 type ExtendedMapToken = MapTokenType & { condicoes?: string[] }
 
@@ -20,6 +24,8 @@ interface MapTokenProps {
   showStatus: boolean
   isPanning: boolean
   isMeasuring: boolean
+  isGm: boolean
+  currentOwnerId: string | undefined
 }
 
 const MapToken = React.memo(({
@@ -33,12 +39,17 @@ const MapToken = React.memo(({
   updateTokenPos,
   showStatus,
   isPanning,
-  isMeasuring
+  isMeasuring,
+  isGm,
+  currentOwnerId
 }: MapTokenProps) => {
   const data = getCharData(token)
   const isSelected = selectedToken?.id === token.id
   const lanternaNoToken = token.lanternaAtiva && visaoNoturna
   const isDraggableDisabled = (isSelected && showStatus) || isPanning || isMeasuring
+
+  const ownerId = (data as any)?.ownerId
+  const canControl = isGm || (ownerId && ownerId === currentOwnerId) || (!ownerId && isGm)
 
   const vidaAtual = data?.recursos?.vidaAtual || 0
   const vidaMaxima = data?.recursos?.vidaMaxima || 1
@@ -51,15 +62,15 @@ const MapToken = React.memo(({
       key={token.id}
       scale={mapScale}
       position={{x: token.x, y: token.y}}
-      onStop={(e, d) => updateTokenPos(token.id, d.x, d.y)}
+      onStop={(e, d) => canControl && updateTokenPos(token.id, d.x, d.y)}
       onStart={() => {
         if (!isSelected) handleTokenClick({ stopPropagation: () => {}, type: 'drag' } as any, token, true)
       }}
-      disabled={isDraggableDisabled}
+      disabled={isDraggableDisabled || !canControl}
     >
       <div
-        className="absolute top-0 left-0 z-40 group cursor-grab active:cursor-grabbing touch-none select-none"
-        onContextMenu={(e) => rotacionarToken(e, token.id, (token.rotacao + 45) % 360)}
+        className={`absolute top-0 left-0 z-40 group touch-none select-none ${canControl ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        onContextMenu={(e) => canControl && rotacionarToken(e, token.id, (token.rotacao + 45) % 360)}
         onClick={(e) => handleTokenClick(e, token)}
         onTouchEnd={(e) => handleTokenClick(e, token)}
       >
@@ -166,6 +177,7 @@ interface StatusPopupProps {
   removeToken: (id: string) => void
   setSelectedToken: (token: null) => void
   setShowStatus: (show: boolean) => void
+  canControl: boolean
 }
 
 const StatusPopup = React.memo(({
@@ -175,7 +187,8 @@ const StatusPopup = React.memo(({
   toggleCondition,
   removeToken,
   setSelectedToken,
-  setShowStatus
+  setShowStatus,
+  canControl
 }: StatusPopupProps) => {
   const isPlayer = selectedData?.type === 'player'
   const { vidaAtual, vidaMaxima, sanidadeAtual, sanidadeMaxima } = selectedData?.recursos || {}
@@ -202,7 +215,7 @@ const StatusPopup = React.memo(({
         <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white transition-colors text-2xl md:text-3xl p-2">✕</button>
       </div>
 
-      <div className="space-y-6 pb-4 md:pb-0">
+      <div className={`space-y-6 pb-4 md:pb-0 ${!canControl ? 'opacity-50 pointer-events-none' : ''}`}>
         <ResourceControl
           label="Vida"
           current={vidaAtual || 0}
@@ -301,9 +314,9 @@ const DiceRoller = React.memo(({ onClose }: { onClose: () => void }) => {
 })
 
 export default function MapArea() {
-  const { characters, updateCharacter } = useCharacters()
-  // Usando o Hook do Firestore para tokens
+  const { user, isGm, logout } = useAuth()
   const { tokens: activeTokens, addToken, updateToken, removeToken } = useFirestoreTokens()
+  const { characters, addCharacter, updateCharacterDb } = useFirestoreCharacters()
 
   const [selectedToken, setSelectedToken] = useState<{ id: string, type: 'player' | 'other' } | null>(null)
   const [showStatus, setShowStatus] = useState(false)
@@ -321,10 +334,39 @@ export default function MapArea() {
   const lastTap = useRef(0)
   const touchHandled = useRef(false)
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'game_state', 'global'), (snap) => {
+        if (snap.exists()) {
+            setCurrentMap(snap.data().currentMap || 0)
+        }
+    })
+    return () => unsubscribe()
+  }, [])
+
+  const handleChangeMap = async (idx: number) => {
+      if (!isGm) return
+      await setDoc(doc(db, 'game_state', 'global'), { currentMap: idx }, { merge: true })
+  }
+
+  if (!user) {
+    return <LoginPage />
+  }
+
   const maps = [
     { name: 'Mansão', url: '/37ffa8f054f6c94695abd202bdb35d50.webp' },
     { name: 'Floresta', url: '/b32903f64bb78648639117e1e0f12ea9.avif' }
   ]
+
+  const createNewCharacter = async () => {
+    const nome = prompt("Nome do personagem:")
+    if (!nome) return
+
+    await addCharacter({
+        nome,
+        foto: 'https://i.imgur.com/ae2e562.png',
+        recursos: { vidaAtual: 20, vidaMaxima: 20, sanidadeAtual: 20, sanidadeMaxima: 20 },
+    })
+  }
 
   const spawnPlayer = useCallback(async (char: Character) => {
     if (activeTokens.find(t => t.id === char.id)) {
@@ -361,17 +403,12 @@ export default function MapArea() {
     setShowSidebar(false)
   }, [addToken])
 
-  // Atualiza no BD (pode ser o personagem no contexto E o token no Firestore)
   const handleUpdateResource = useCallback((id: string, type: 'player' | 'other', resource: string, value: number) => {
     if (type === 'player') {
-      updateCharacter(id, (char) => ({
-        ...char,
-        recursos: { ...char.recursos, [resource]: value }
-      }))
+      updateCharacterDb(id, { recursos: { ...selectedData?.recursos, [resource]: value } as any })
     } 
-    // Sempre atualiza o token visual no banco também
     updateToken(id, { recursos: { ...selectedData?.recursos, [resource]: value } as any })
-  }, [updateCharacter, updateToken])
+  }, [updateCharacterDb, updateToken])
 
   const toggleCondition = useCallback((id: string, condition: string) => {
       const token = activeTokens.find(t => t.id === id)
@@ -498,13 +535,20 @@ export default function MapArea() {
 
   const currentToken = activeTokens.find(t => t.id === selectedToken?.id)
   const selectedData = currentToken ? getCharData(currentToken) : null
+  const isSelectedDataOwner = selectedData && ((selectedData as any).ownerId === user.uid || isGm)
 
   return (
     <div className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden flex flex-col select-none font-sans">
 
       <div className="w-full p-2 md:p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center z-[200] shadow-2xl shrink-0 overflow-x-auto">
         <div className="flex gap-2 md:gap-4 items-center min-w-max">
-          <Link to="/" className="text-zinc-500 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all">← Sair</Link>
+          <button onClick={logout} className="text-zinc-500 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all flex flex-col items-center">
+            <span>{isGm ? '🛡️ Mestre' : '👤 Player'}</span>
+            <span className="text-[8px] text-red-500">Sair</span>
+          </button>
+          
+          <div className="w-px h-6 bg-zinc-800 mx-2" />
+
           <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
           <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão</button>
           <button onClick={() => { setIsMeasuring(!isMeasuring); setRulerStart(null); }} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${isMeasuring ? 'bg-cyan-600 border-cyan-400 text-white' : 'border-zinc-800 text-zinc-600'}`}>Régua</button>
@@ -512,26 +556,39 @@ export default function MapArea() {
           <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-3 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
         </div>
         <div className="hidden md:flex gap-2">
-          {maps.map((m, idx) => (
-            <button key={idx} onClick={() => setCurrentMap(idx)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${currentMap === idx ? 'border-white text-white' : 'border-zinc-800 text-zinc-600'}`}>{m.name}</button>
+          {isGm && maps.map((m, idx) => (
+            <button key={idx} onClick={() => handleChangeMap(idx)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${currentMap === idx ? 'border-white text-white' : 'border-zinc-800 text-zinc-600'}`}>{m.name}</button>
           ))}
         </div>
       </div>
 
       <div className="flex-1 w-full flex overflow-hidden relative">
         <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 absolute md:relative z-[150] w-64 md:w-72 h-full bg-zinc-950 border-r border-zinc-800 p-6 overflow-y-auto flex flex-col shadow-2xl shrink-0`}>
-          <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-6 italic">Agentes</h3>
+          <div className="flex justify-between items-center mb-6">
+              <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest italic">Agentes</h3>
+              <button onClick={createNewCharacter} className="text-[9px] bg-indigo-600 text-white px-2 py-1 rounded font-bold hover:bg-indigo-500">+ NOVO</button>
+          </div>
+          
           <div className="grid grid-cols-1 gap-3 mb-10">
             {characters.map(c => (
-              <button key={c.id} onClick={(e) => { e.stopPropagation(); spawnPlayer(c); }} className="text-left p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-indigo-500 flex items-center gap-4 group transition-all">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-black border border-zinc-700 overflow-hidden shrink-0 shadow-lg">
-                  <img src={c.foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[9px] md:text-[10px] font-black uppercase text-zinc-300 group-hover:text-white truncate">{c.nome}</span>
-              </button>
+              <div key={c.id} className="relative group">
+                <button onClick={(e) => { e.stopPropagation(); spawnPlayer(c); }} className="w-full text-left p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-indigo-500 flex items-center gap-4 transition-all">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-black border border-zinc-700 overflow-hidden shrink-0 shadow-lg">
+                    <img src={c.foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[9px] md:text-[10px] font-black uppercase text-zinc-300 group-hover:text-white truncate">{c.nome}</span>
+                </button>
+              </div>
             ))}
+            {characters.length === 0 && <p className="text-zinc-600 text-[10px] text-center italic">Nenhum personagem disponível.</p>}
           </div>
-          <button onClick={(e) => { e.stopPropagation(); spawnNPC(); }} className="w-full p-4 bg-red-950/10 border border-red-900/20 rounded-xl text-[10px] font-black uppercase text-red-500 hover:bg-red-900/20 transition-all shadow-lg">+ NPC</button>
+
+          {isGm && (
+              <div className="border-t border-zinc-800 pt-6 mt-auto">
+                 <h3 className="text-[10px] font-black uppercase text-red-900 tracking-widest mb-3 italic">Mestre</h3>
+                 <button onClick={(e) => { e.stopPropagation(); spawnNPC(); }} className="w-full p-4 bg-red-950/10 border border-red-900/20 rounded-xl text-[10px] font-black uppercase text-red-500 hover:bg-red-900/20 transition-all shadow-lg">+ Criar NPC</button>
+              </div>
+          )}
         </div>
 
         <div className="relative flex-1 bg-black overflow-hidden">
@@ -591,6 +648,8 @@ export default function MapArea() {
                     isPanning={isPanning}
                     showStatus={showStatus}
                     isMeasuring={isMeasuring}
+                    isGm={isGm}
+                    currentOwnerId={user.uid}
                   />
                 ))}
               </div>
@@ -610,6 +669,7 @@ export default function MapArea() {
           removeToken={removeToken}
           setSelectedToken={setSelectedToken}
           setShowStatus={setShowStatus}
+          canControl={!!isSelectedDataOwner}
         />
       )}
     </div>

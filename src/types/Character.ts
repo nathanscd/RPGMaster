@@ -25,6 +25,7 @@ export type InventoryItem = {
 
 export interface Character {
   id: string
+  ownerId?: string // <--- ADICIONADO: Para saber quem criou
   _id?: string
   nome: string
   foto?: string
@@ -68,6 +69,7 @@ export interface MapToken {
   lanternaAtiva: boolean
   nome?: string
   foto?: string
+  condicoes?: string[] // <--- ADICIONADO: Para facilitar o uso no MapArea
   recursos: {
     vidaAtual: number
     vidaMaxima: number

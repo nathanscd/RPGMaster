@@ -1,161 +1,78 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCharacters } from '../context/CharacterContext'
-import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
+import { updateProfile } from 'firebase/auth'
 
 export default function Dashboard() {
-  const { characters, deleteCharacter } = useCharacters()
-  const { theme, setTheme } = useTheme()
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const { user, logout, isGm } = useAuth()
+  const [isEditing, setIsEditing] = useState(false)
+  const [newName, setNewName] = useState(user?.displayName || '')
+
+  const handleUpdateProfile = async () => {
+    if (!user) return
+    try {
+      await updateProfile(user, { displayName: newName })
+      setIsEditing(false)
+      window.location.reload()
+    } catch (error) {
+      console.error("Erro ao atualizar perfil", error)
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-app)] text-white p-6 md:p-12 flex flex-col items-center transition-colors duration-500">
-      
-      {/* SELETOR DE TEMAS */}
-      <div className="w-full max-w-6xl mb-8 flex gap-2 justify-center md:justify-start">
-        {(['mystery', 'medieval', 'scifi'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTheme(t)}
-            className={`px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border transition-all ${
-              theme === t 
-                ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-[0_0_15px_var(--accent-glow)]' 
-                : 'border-zinc-800 text-zinc-500 hover:border-zinc-600'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* HEADER */}
-      <div className="w-full max-w-6xl mb-12 flex justify-between items-end border-b border-[var(--border-color)] pb-6">
+    <div className="min-h-screen bg-zinc-950 text-white p-6 font-sans select-none">
+      <header className="flex justify-between items-center mb-12 border-b border-zinc-800 pb-6">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter">
-            Meus <span className="text-[var(--accent)]">{theme === 'medieval' ? 'Aliados' : 'Agentes'}</span>
-          </h1>
-          <p className="text-zinc-500 text-sm mt-2 font-bold uppercase tracking-widest italic">
-            {theme === 'mystery' && "Protocolo de Investigação Ativo"}
-            {theme === 'medieval' && "Crônicas da Aliança"}
-            {theme === 'scifi' && "Database de Tripulantes"}
-          </p>
+           <h1 className="text-3xl font-black uppercase italic tracking-tighter">RPG<span className="text-indigo-500">Master</span></h1>
+           <p className="text-zinc-500 text-sm">Painel de Controle</p>
         </div>
+        <button onClick={logout} className="text-xs font-bold text-red-500 border border-red-900/30 bg-red-950/10 px-4 py-2 rounded-lg hover:bg-red-900/20 transition-all">SAIR</button>
+      </header>
+
+      <div className="max-w-4xl mx-auto space-y-8">
         
-        {/* <Link 
-          to="/create" 
-          className="bg-[var(--accent)] hover:opacity-90 text-white px-6 py-3 rounded-lg font-black transition-all shadow-[0_0_20px_var(--accent-glow)] uppercase text-xs tracking-widest"
-        >
-          + Novo Registro
-        </Link> */}
-
-        <div className="flex gap-4">
-          <Link 
-            to="/map" 
-            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
-          >
-            🗺️ Mapa
-          </Link>
-
-          <Link 
-            to="/rules" 
-            className="border border-zinc-800 hover:border-[var(--accent)] text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-xs"
-          >
-            Livro de Regras
-          </Link>
-        </div>
-      </div>
-
-      <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {characters.map(c => (
-          <div key={c.id} className="group relative">
-            <Link 
-              to={`/sheet/${c.id}`}
-              className="block h-full bg-[var(--bg-card)] border border-[var(--border-color)] p-8 rounded-2xl hover:border-[var(--accent)] transition-all overflow-hidden relative"
-            >
-              <div className="absolute -right-2 -top-2 text-7xl font-black text-white/[0.02] italic group-hover:text-[var(--accent-glow)] transition-colors z-0 pointer-events-none select-none">
-                {c.classe?.substring(0, 3).toUpperCase()}
-              </div>
-
-              <div className="relative z-10 flex flex-col h-full justify-between">
-                <div>
-                  <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.3em] opacity-80">
-                    {c.origem || 'Operacional'}
-                  </span>
-                  
-                  <h2 className="text-2xl font-black text-white mt-2 group-hover:text-[var(--accent)] transition-colors leading-tight">
-                    {c.nome}
-                  </h2>
-                  
-                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">
-                    {c.classe}
-                  </p>
-                </div>
-
-                <div className="mt-10 flex items-center justify-between border-t border-zinc-800/50 pt-6">
-                  <div className="flex gap-4">
-                     <div className="text-left">
-                       <p className="text-[8px] text-zinc-600 uppercase font-black tracking-tighter">NEX</p>
-                       <p className="text-sm font-black text-zinc-300">5%</p>
-                     </div>
-                     <div className="text-left">
-                       <p className="text-[8px] text-zinc-600 uppercase font-black tracking-tighter">PV</p>
-                       <p className="text-sm font-black text-red-600">{c.recursos?.vidaMaxima || 0}</p>
-                     </div>
+        <div className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl flex items-center gap-6 shadow-xl">
+           <div className="relative group cursor-pointer">
+              <img src={user?.photoURL || 'https://i.imgur.com/ae2e562.png'} className="w-20 h-20 rounded-full border-2 border-indigo-500 object-cover shadow-[0_0_20px_rgba(99,102,241,0.3)]" />
+           </div>
+           
+           <div className="flex-1">
+              {isEditing ? (
+                  <div className="flex gap-2">
+                      <input 
+                        value={newName} 
+                        onChange={e => setNewName(e.target.value)}
+                        className="bg-zinc-950 border border-zinc-700 p-2 rounded text-white outline-none focus:border-indigo-500"
+                      />
+                      <button onClick={handleUpdateProfile} className="bg-green-600 px-3 rounded font-bold hover:bg-green-500">OK</button>
+                      <button onClick={() => setIsEditing(false)} className="bg-zinc-700 px-3 rounded font-bold hover:bg-zinc-600">X</button>
                   </div>
-
-                  <div className="text-[10px] font-black text-[var(--accent)] flex items-center gap-2 group-hover:translate-x-1 transition-transform">
-                    ABRIR <span className="text-lg">→</span>
+              ) : (
+                  <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold">Seja bem-vindo, <span className="text-indigo-400">{user?.displayName || 'Viajante'}</span>!</h2>
+                      <button onClick={() => setIsEditing(true)} className="text-zinc-500 hover:text-white text-xs">✏️</button>
                   </div>
-                </div>
-              </div>
-            </Link>
-
-            {/*<button 
-              onClick={(e) => {
-                e.preventDefault();
-                setDeleteId(c.id);
-              }}
-              className="absolute top-4 right-4 z-30 p-2 bg-red-950/30 text-red-500 border border-red-900/30 rounded-lg hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md"
-            >
-              🗑️
-            </button> */}
-          </div>
-        ))}
-
-        {characters.length === 0 && (
-          <div className="col-span-full py-32 text-center border-2 border-dashed border-zinc-900 rounded-3xl">
-            <p className="text-zinc-700 font-black uppercase tracking-[0.5em] text-sm">Sem registros encontrados</p>
-          </div>
-        )}
-      </div>
-
-      {deleteId && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-          <div className="bg-zinc-950 border border-red-900/50 p-10 rounded-3xl max-w-sm w-full text-center shadow-[0_0_80px_rgba(220,38,38,0.2)] animate-in zoom-in-95 duration-300">
-            <div className="text-4xl mb-6">⚠️</div>
-            <h2 className="text-2xl font-black uppercase text-white mb-3 tracking-tighter">Confirmar Exclusão?</h2>
-            <p className="text-zinc-500 text-xs mb-10 uppercase tracking-widest leading-relaxed">O arquivo do agente será permanentemente deletado da base de dados.</p>
-            
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={async () => {
-                  await deleteCharacter(deleteId)
-                  setDeleteId(null)
-                }}
-                className="w-full py-4 bg-red-600 text-white font-black rounded-xl hover:bg-red-500 transition-all uppercase text-xs tracking-[0.2em]"
-              >
-                Confirmar Deleção
-              </button>
-              <button 
-                onClick={() => setDeleteId(null)}
-                className="w-full py-4 bg-transparent text-zinc-600 font-bold rounded-xl hover:text-zinc-400 transition-colors uppercase text-[10px] tracking-widest"
-              >
-                Abortar
-              </button>
-            </div> */
-          </div>
+              )}
+              <p className="text-zinc-500 text-sm mt-1">{user?.email}</p>
+              <span className={`inline-block mt-2 text-[10px] font-black px-2 py-0.5 rounded ${isGm ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
+                 {isGm ? '🛡️ MESTRE DA MESA' : '👤 JOGADOR'}
+              </span>
+           </div>
         </div>
-      )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <Link to="/map" className="p-6 bg-gradient-to-br from-indigo-900/20 to-zinc-900 border border-indigo-500/30 hover:border-indigo-500 rounded-2xl transition-all group">
+              <h3 className="text-xl font-black uppercase text-indigo-400 group-hover:text-white mb-2">🗺️ Acessar Mapa</h3>
+              <p className="text-zinc-500 text-sm">Entre no VTT para mover tokens e explorar.</p>
+           </Link>
+           
+           <Link to="/create" className="p-6 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl transition-all group">
+              <h3 className="text-xl font-black uppercase text-zinc-300 group-hover:text-white mb-2">📝 Criar Personagem</h3>
+              <p className="text-zinc-500 text-sm">Crie uma nova ficha de agente.</p>
+           </Link>
+        </div>
+
+      </div>
     </div>
   )
 }

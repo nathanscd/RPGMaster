@@ -1,92 +1,121 @@
-import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { useLocation, Link, useNavigate } from 'react-router-dom'
 import { useCharacters } from '../context/CharacterContext'
+import { useAuth } from '../context/AuthContext'
 import { Character, InventoryItem } from '../types/Character'
 
+// LISTA PADRÃO DE ITENS (Substitui o backend antigo)
+const STANDARD_ITEMS: InventoryItem[] = [
+    { id: 'item-1', nome: 'Pistola', tipo: 'arma', peso: 1, roll: { quantidade: 1, dado: 12 } },
+    { id: 'item-2', nome: 'Fuzil de Assalto', tipo: 'arma', peso: 2, roll: { quantidade: 2, dado: 10 } },
+    { id: 'item-3', nome: 'Faca de Combate', tipo: 'arma', peso: 1, roll: { quantidade: 1, dado: 6 } },
+    { id: 'item-4', nome: 'Bastão', tipo: 'arma', peso: 1, roll: { quantidade: 1, dado: 8 } },
+    { id: 'item-5', nome: 'Kit Médico', tipo: 'item', peso: 1, descricao: 'Cura ferimentos.' },
+    { id: 'item-6', nome: 'Mochila Tática', tipo: 'item', peso: 0, descricao: 'Aumenta carga.' },
+    { id: 'item-7', nome: 'Lanterna', tipo: 'item', peso: 0, descricao: 'Ilumina áreas escuras.' },
+    { id: 'item-8', nome: 'Corda', tipo: 'item', peso: 1, descricao: '10 metros de corda resistente.' },
+    { id: 'item-9', nome: 'Componentes Rituais', tipo: 'item', peso: 1, descricao: 'Usado para ocultismo.' },
+    { id: 'item-10', nome: 'Colete Leve', tipo: 'item', peso: 2, descricao: 'Defesa +2' },
+]
+
 export default function AddItem() {
-  const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const { characters, updateCharacter } = useCharacters()
   
+  // Pega o ID passado via state do SheetView
+  const characterId = location.state?.characterId
+
   const [availableItems, setAvailableItems] = useState<InventoryItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'item' | 'arma'>('all')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   
+  // Estados do Modal
   const [customName, setCustomName] = useState('')
   const [customWeight, setCustomWeight] = useState(1)
   const [customObs, setCustomObs] = useState('')
   const [customType, setCustomType] = useState('Padrão')
-  
   const [customDiceQtd, setCustomDiceQtd] = useState(1)
   const [customDiceFace, setCustomDiceFace] = useState(6)
 
-  const character = characters.find(c => c.id === id || (c as any)._id === id)
+  // Busca o personagem na lista carregada
+  const character = characters.find(c => c.id === characterId)
 
   useEffect(() => {
-    axios.get('http://localhost:3001/api/items')
-      .then(response => {
-        setAvailableItems(response.data)
-      })
-      .catch(err => console.error('Erro ao buscar itens:', err))
+    // Carrega os itens padrão
+    setAvailableItems(STANDARD_ITEMS)
   }, [])
 
-  if (!character) {
-    return <div className="p-6 text-white">Personagem não encontrado</div>
+  // Se não veio ID ou não achou o personagem, redireciona
+  if (!characterId || !character) {
+    return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 gap-4">
+            <h2 className="text-xl font-bold">Personagem não selecionado</h2>
+            <p className="text-zinc-500">Volte para a ficha e tente novamente.</p>
+            <Link to="/" className="text-blue-500 border border-blue-900 px-4 py-2 rounded">Ir para Dashboard</Link>
+        </div>
+    )
   }
 
-  const pesoAtual = (character.inventario || []).reduce((t, i) => t + i.peso, 0)
-  const capacidade = character.inventarioMaxPeso || 1
+  const pesoAtual = (character.inventario || []).reduce((t, i) => t + (i.peso || 0), 0)
+  const capacidade = character.inventarioMaxPeso || 5
   const percentPeso = Math.min(100, (pesoAtual / capacidade) * 100)
 
-  function addItem(item: InventoryItem) {
-    updateCharacter(character!.id, (c: Character) => {
-      const jaExiste = !item.id.startsWith('custom-') && c.inventario?.some(i => i.id === item.id)
-      if (jaExiste) return c
+  // Função Principal de Adicionar
+  async function addItem(item: InventoryItem) {
+    // 1. Verifica Duplicidade (exceto customizados)
+    const jaExiste = !item.id.startsWith('custom-') && character?.inventario?.some((i: any) => i.id === item.id)
+    if (jaExiste) return
 
-      const pesoNovo = (c.inventario || []).reduce((t, i) => t + i.peso, 0) + item.peso
-      if (pesoNovo > (c.inventarioMaxPeso || 0)) {
-        alert('Inventário cheio! Aumente sua força.')
-        return c
-      }
+    // 2. Verifica Peso
+    const pesoNovo = pesoAtual + item.peso
+    if (pesoNovo > capacidade) {
+       alert(`Inventário cheio! Capacidade: ${capacidade}`)
+       return
+    }
 
-      const itemParaInventario = { ...item, instanceId: Date.now() }
-      const novoInventario = [...(c.inventario || []), itemParaInventario]
-      const isArma = item.tipo.toLowerCase() === 'arma'
-      
-      const novasArmas =
-        isArma && item.roll
-          ? [...(c.armas || []), { nome: item.nome, roll: item.roll }]
-          : (c.armas || [])
+    // 3. Prepara os novos arrays
+    const itemParaInventario = { ...item, instanceId: Date.now() }
+    const novoInventario = [...(character?.inventario || []), itemParaInventario]
+    
+    let novasArmas = [...(character?.armas || [])]
+    const isArma = item.tipo.toLowerCase() === 'arma'
+    
+    if (isArma && item.roll) {
+        novasArmas.push({ nome: item.nome, roll: item.roll })
+    }
 
-      return { ...c, inventario: novoInventario, armas: novasArmas }
+    // 4. Salva no Firebase
+    await updateCharacter(character!.id, {
+        inventario: novoInventario,
+        armas: novasArmas
     })
   }
 
   function handleCreateCustom() {
     if (!customName.trim()) return alert('Dê um nome ao item')
-    const tipoFinal = customType === 'Arma' ? 'arma' : 'item' 
+    
     const newItem: InventoryItem = {
       id: `custom-${Date.now()}`,
       nome: customName,
       peso: customWeight,
-      tipo: customType, 
+      tipo: customType === 'Arma' ? 'arma' : 'item', 
       descricao: customObs
     }
 
     if (customType === 'Arma') {
-      newItem.tipo = 'arma' 
       newItem.roll = {
         quantidade: customDiceQtd,
         dado: customDiceFace
       }
-    } else {
-      newItem.tipo = customType
     }
 
     addItem(newItem)
     
+    // Reset Modal
     setCustomName('')
     setCustomWeight(1)
     setCustomObs('')
@@ -106,7 +135,7 @@ export default function AddItem() {
   })
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-black text-white p-4 md:p-8 flex flex-col items-center pb-24">
       <div className="w-full max-w-5xl mb-8">
         <div className="flex flex-col md:flex-row justify-between items-end mb-4 gap-4">
           <div>
@@ -182,14 +211,14 @@ export default function AddItem() {
         </button>
 
         {filteredItems.map(item => {
-          const jaTem = character.inventario?.some(i => i.id === item.id)
+          const jaTem = character.inventario?.some((i: any) => i.id === item.id)
           const isWeapon = item.tipo.toLowerCase() === 'arma'
 
           return (
             <button
               key={item.id}
               onClick={() => !jaTem && addItem(item)}
-              disabled={jaTem}
+              disabled={!!jaTem}
               className={`
                 relative flex flex-col text-left p-4 rounded-xl border transition-all duration-300 group overflow-hidden
                 ${jaTem 
@@ -212,11 +241,16 @@ export default function AddItem() {
                     Dano: {item.roll.quantidade}d{item.roll.dado}
                   </span>
                 )}
+                {item.descricao && (
+                    <span className="block text-xs text-zinc-600 italic mt-1 truncate">
+                        {item.descricao}
+                    </span>
+                )}
               </div>
 
               <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
                  <div className="text-xs bg-black px-2 py-1 rounded text-zinc-400 border border-zinc-800">
-                    Peso <strong>{item.peso}</strong>
+                   Peso <strong>{item.peso}</strong>
                  </div>
                  
                  {jaTem ? (
@@ -273,24 +307,24 @@ export default function AddItem() {
                   <p className="text-xs font-bold text-blue-400 uppercase text-center mb-2">Configuração de Dano</p>
                   <div className="flex gap-4">
                     <div className="flex-1">
-                       <label className="block text-[10px] text-zinc-500 mb-1">DADOS (QTD)</label>
-                       <input 
-                         type="number" min="1"
-                         value={customDiceQtd}
-                         onChange={e => setCustomDiceQtd(Number(e.target.value))}
-                         className="w-full bg-black border border-zinc-700 rounded p-2 text-center font-bold text-white focus:border-blue-500 outline-none"
-                       />
+                        <label className="block text-[10px] text-zinc-500 mb-1">DADOS (QTD)</label>
+                        <input 
+                          type="number" min="1"
+                          value={customDiceQtd}
+                          onChange={e => setCustomDiceQtd(Number(e.target.value))}
+                          className="w-full bg-black border border-zinc-700 rounded p-2 text-center font-bold text-white focus:border-blue-500 outline-none"
+                        />
                     </div>
                     <div className="flex items-end pb-2 font-bold text-zinc-600">d</div>
                     <div className="flex-1">
-                       <label className="block text-[10px] text-zinc-500 mb-1">LADOS</label>
-                       <select 
-                         value={customDiceFace}
-                         onChange={e => setCustomDiceFace(Number(e.target.value))}
-                         className="w-full bg-black border border-zinc-700 rounded p-2 text-center font-bold text-white focus:border-blue-500 outline-none"
-                       >
-                         {[4, 6, 8, 10, 12, 20].map(d => <option key={d} value={d}>{d}</option>)}
-                       </select>
+                        <label className="block text-[10px] text-zinc-500 mb-1">LADOS</label>
+                        <select 
+                          value={customDiceFace}
+                          onChange={e => setCustomDiceFace(Number(e.target.value))}
+                          className="w-full bg-black border border-zinc-700 rounded p-2 text-center font-bold text-white focus:border-blue-500 outline-none"
+                        >
+                          {[4, 6, 8, 10, 12, 20].map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
                     </div>
                   </div>
                   <div className="text-center text-xs text-blue-200 font-mono">
@@ -303,8 +337,8 @@ export default function AddItem() {
                 <label className="block text-xs font-bold text-zinc-500 mb-1 uppercase">Peso</label>
                 <div className="flex items-center gap-2">
                   <button 
-                     onClick={() => setCustomWeight(Math.max(0, customWeight - 1))}
-                     className="bg-zinc-800 w-10 h-10 rounded border border-zinc-700 hover:bg-zinc-700 font-bold"
+                      onClick={() => setCustomWeight(Math.max(0, customWeight - 1))}
+                      className="bg-zinc-800 w-10 h-10 rounded border border-zinc-700 hover:bg-zinc-700 font-bold"
                   >-</button>
                   <input 
                     type="number" 
@@ -313,8 +347,8 @@ export default function AddItem() {
                     className="flex-1 bg-black border border-zinc-800 rounded-lg p-3 text-center text-white font-mono outline-none"
                   />
                   <button 
-                     onClick={() => setCustomWeight(customWeight + 1)}
-                     className="bg-zinc-800 w-10 h-10 rounded border border-zinc-700 hover:bg-zinc-700 font-bold"
+                      onClick={() => setCustomWeight(customWeight + 1)}
+                      className="bg-zinc-800 w-10 h-10 rounded border border-zinc-700 hover:bg-zinc-700 font-bold"
                   >+</button>
                 </div>
               </div>
