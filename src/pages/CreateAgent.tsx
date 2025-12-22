@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useCharacters } from '../context/CharacterContext' // <--- Importamos o Contexto
+import { useCharacters } from '../context/CharacterContext'
+import { useAuth } from '../context/AuthContext'
 
 function CustomSelect({ value, onChange }: { value: string, onChange: (v: string) => void }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -43,57 +44,89 @@ function CustomSelect({ value, onChange }: { value: string, onChange: (v: string
 
 export default function CreateAgent() {
   const navigate = useNavigate()
-  const { addCharacter } = useCharacters() // <--- Usamos a função do Firebase aqui
+  const { addCharacter } = useCharacters()
+  const { user, loading: authLoading } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [nome, setNome] = useState('')
   const [classe, setClasse] = useState('Combatente')
   const [origem, setOrigem] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    
+    if (authLoading || !user) {
+      return alert('Aguarde o carregamento do perfil ou faça login novamente.')
+    }
+
     if (!nome.trim()) return alert('O nome do agente é obrigatório')
     
     setLoading(true)
 
-    const newCharacter = {
-      nome,
-      classe,
-      origem: origem || 'Desconhecida', // Garante que não vá vazio
-      atributos: { For: 1, Agi: 1, Int: 1, Vig: 1, Pre: 1 },
-      recursos: { 
-        vidaAtual: 20, vidaMaxima: 20, 
-        peAtual: 2, peMaximo: 2, 
-        sanidadeAtual: 20, sanidadeMaxima: 20 
-      },
-      inventario: [],
-      habilidades: [],
-      armas: [],
-      inventarioMaxPeso: 5,
-      pericias: {} // Adicionei inicialização de perícias vazias
-    }
-
     try {
-      // Chama a função do Contexto que salva no Firestore
+      let fotoUrl = 'https://i.imgur.com/ae2e562.png'
+
+      if (imageFile) {
+        fotoUrl = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            const img = new Image()
+            img.onload = () => {
+              const canvas = document.createElement('canvas')
+              const MAX_WIDTH = 300
+              const scaleSize = MAX_WIDTH / img.width
+              canvas.width = MAX_WIDTH
+              canvas.height = img.height * scaleSize
+              const ctx = canvas.getContext('2d')
+              ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
+              resolve(canvas.toDataURL('image/png', 0.4))
+            }
+            img.src = event.target?.result as string
+          }
+          reader.readAsDataURL(imageFile)
+        })
+      }
+
+      const newCharacter = {
+        nome,
+        classe,
+        origem: origem || 'Desconhecida',
+        foto: fotoUrl,
+        ownerId: user.uid,
+        ownerName: user.displayName || 'Anônimo',
+        atributos: { For: 1, Agi: 1, Int: 1, Vig: 1, Pre: 1 },
+        recursos: { 
+          vidaAtual: 20, vidaMaxima: 20, 
+          peAtual: 2, peMaximo: 2, 
+          sanidadeAtual: 20, sanidadeMaxima: 20 
+        },
+        inventario: [],
+        habilidades: [],
+        armas: [],
+        inventarioMaxPeso: 5,
+        pericias: {}
+      }
+
       await addCharacter(newCharacter)
       navigate('/')
     } catch (error) {
-      console.error('Erro ao criar agente:', error)
-      alert('Erro ao salvar no banco de dados.')
+      console.error(error)
+      alert('Erro ao processar os dados do agente.')
     } finally {
-        setLoading(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-app)] text-white p-6 flex flex-col items-center justify-center transition-colors duration-500">
-      <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] p-8 rounded-2xl shadow-2xl backdrop-blur-sm">
+    <div className="min-h-screen bg-[var(--bg-app)] text-white p-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] p-8 rounded-2xl shadow-2xl">
         <header className="mb-8">
           <h1 className="text-3xl font-black uppercase tracking-tighter">
             Recrutar <span className="text-[var(--accent)]">Agente</span>
           </h1>
           <div className="h-1 w-12 bg-[var(--accent)] mt-1" />
-          <p className="text-zinc-500 text-xs mt-3 uppercase tracking-widest font-bold opacity-60">Iniciando protocolo de registro</p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -103,7 +136,7 @@ export default function CreateAgent() {
               type="text"
               value={nome}
               onChange={e => setNome(e.target.value)}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none transition-all font-bold"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none font-bold"
             />
           </div>
 
@@ -119,23 +152,37 @@ export default function CreateAgent() {
               value={origem}
               onChange={e => setOrigem(e.target.value)}
               placeholder="Ex: Acadêmico"
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none transition-all placeholder:text-zinc-800 font-bold"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none placeholder:text-zinc-800 font-bold"
             />
           </div>
 
-          <div className="flex gap-4 pt-6">
-            <Link 
-              to="/" 
-              className="flex-1 text-center py-3 border border-[var(--border-color)] rounded-lg font-black text-xs text-zinc-500 hover:bg-[var(--border-color)] hover:text-white transition-all uppercase tracking-widest"
+          <div>
+            <label className="block text-[10px] font-black uppercase text-zinc-500 mb-2 tracking-[0.2em]">Foto do Token (Opcional)</label>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full bg-[var(--bg-input)] border border-dashed border-[var(--border-color)] rounded-lg p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-all"
             >
-              Abortar
-            </Link>
+              <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">
+                {imageFile ? imageFile.name : 'Clique para selecionar imagem'}
+              </span>
+              <input 
+                type="file"
+                ref={fileInputRef}
+                onChange={e => setImageFile(e.target.files ? e.target.files[0] : null)}
+                className="hidden"
+                accept="image/*"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-6">
+            <Link to="/" className="flex-1 text-center py-3 border border-[var(--border-color)] rounded-lg font-black text-xs text-zinc-500 uppercase tracking-widest">Abortar</Link>
             <button 
               type="submit"
-              disabled={loading}
-              className="flex-1 bg-[var(--accent)] hover:opacity-80 disabled:opacity-50 text-white py-3 rounded-lg font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_25px_var(--accent-glow)] transition-all active:scale-95"
+              disabled={loading || authLoading}
+              className="flex-1 bg-[var(--accent)] hover:opacity-80 disabled:opacity-50 text-white py-3 rounded-lg font-black uppercase tracking-[0.2em] text-xs shadow-[0_0_25px_var(--accent-glow)] transition-all"
             >
-              {loading ? 'Processando...' : 'Confirmar'}
+              {loading ? 'Enviando...' : 'Confirmar'}
             </button>
           </div>
         </form>

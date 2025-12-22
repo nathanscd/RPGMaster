@@ -34,18 +34,15 @@ export function useFirestoreCharacters() {
     return () => unsubscribe()
   }, [user, isGm])
 
-  const addCharacter = useCallback(async (char: Partial<Character> & { nome: string }) => {
+  const addCharacter = useCallback(async (char: Partial<Character>) => {
     if (!user) return
-
-    const defaultData: Partial<Character> = {
+    
+    const defaultData = {
         classe: 'Desconhecida',
         origem: 'Desconhecida',
         foto: 'https://i.imgur.com/ae2e562.png',
         atributos: { For: 1, Agi: 1, Int: 1, Vig: 1, Pre: 1 },
-        recursos: { 
-            vidaAtual: 10, vidaMaxima: 10, 
-            sanidadeAtual: 10, sanidadeMaxima: 10 
-        },
+        recursos: { vidaAtual: 10, vidaMaxima: 10, sanidadeAtual: 10, sanidadeMaxima: 10 },
         inventario: [],
         pericias: {}
     }
@@ -53,7 +50,8 @@ export function useFirestoreCharacters() {
     await addDoc(collection(db, 'characters'), { 
         ...defaultData,
         ...char, 
-        ownerId: user.uid 
+        ownerId: user.uid,
+        ownerName: user.displayName || 'Anônimo' // Salva o nome para exibir no Dashboard
     })
   }, [user])
 

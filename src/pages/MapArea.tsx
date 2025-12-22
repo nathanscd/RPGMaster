@@ -2,31 +2,11 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Draggable from 'react-draggable'
 import { Link } from 'react-router-dom'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { Character, MapToken as MapTokenType } from '../types/Character'
-import { useFirestoreTokens } from '../hooks/useFirestoreTokens'
-import { useFirestoreCharacters } from '../hooks/useFirestoreCharacters'
+import { useCharacters } from '../context/CharacterContext'
 import { useAuth } from '../context/AuthContext'
-import { LoginPage } from '../components/LoginPage'
-import { db } from '../services/firebase'
-import { doc, onSnapshot, setDoc } from 'firebase/firestore'
-
-type ExtendedMapToken = MapTokenType & { condicoes?: string[] }
-
-interface MapTokenProps {
-  token: ExtendedMapToken
-  selectedToken: { id: string; type: 'player' | 'other' } | null
-  mapScale: number
-  visaoNoturna: boolean
-  getCharData: (token: ExtendedMapToken) => (Character & ExtendedMapToken) | ExtendedMapToken | null
-  rotacionarToken: (e: React.MouseEvent | React.TouchEvent, id: string, angulo: number) => void
-  handleTokenClick: (e: React.MouseEvent | React.TouchEvent | any, t: ExtendedMapToken, isDragStart?: boolean) => void
-  updateTokenPos: (id: string, x: number, y: number) => void
-  showStatus: boolean
-  isPanning: boolean
-  isMeasuring: boolean
-  isGm: boolean
-  currentOwnerId: string | undefined
-}
+import { useFirestoreTokens } from '../hooks/useFirestoreTokens'
+import { useFirestoreScenarios } from '../hooks/useFirestoreScenarios'
+import { Character, MapToken as MapTokenType } from '../types/Character'
 
 const MapToken = React.memo(({
   token,
@@ -39,76 +19,61 @@ const MapToken = React.memo(({
   updateTokenPos,
   showStatus,
   isPanning,
-  isMeasuring,
-  isGm,
-  currentOwnerId
-}: MapTokenProps) => {
+  canMove
+}: any) => {
   const data = getCharData(token)
   const isSelected = selectedToken?.id === token.id
   const lanternaNoToken = token.lanternaAtiva && visaoNoturna
-  const isDraggableDisabled = (isSelected && showStatus) || isPanning || isMeasuring
-
-  const ownerId = (data as any)?.ownerId
-  const canControl = isGm || (ownerId && ownerId === currentOwnerId) || (!ownerId && isGm)
+  const isDraggableDisabled = !canMove || (isSelected && showStatus) || isPanning
 
   const vidaAtual = data?.recursos?.vidaAtual || 0
   const vidaMaxima = data?.recursos?.vidaMaxima || 1
-  const sanidadeAtual = data?.recursos?.sanidadeAtual || 0
-  const sanidadeMaxima = data?.recursos?.sanidadeMaxima || 1
-  const condicoes = token.condicoes || []
+  const condicoes = (token as any).condicoes || []
 
   return (
     <Draggable
       key={token.id}
       scale={mapScale}
       position={{x: token.x, y: token.y}}
-      onStop={(e, d) => canControl && updateTokenPos(token.id, d.x, d.y)}
+      onStop={(e, d) => updateTokenPos(token.id, d.x, d.y)}
       onStart={() => {
-        if (!isSelected) handleTokenClick({ stopPropagation: () => {}, type: 'drag' } as any, token, true)
+        if (!isSelected) handleTokenClick({ stopPropagation: () => {} } as any, token, true)
       }}
-      disabled={isDraggableDisabled || !canControl}
+      disabled={isDraggableDisabled}
     >
       <div
-        className={`absolute top-0 left-0 z-40 group touch-none select-none ${canControl ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
-        onContextMenu={(e) => canControl && rotacionarToken(e, token.id, (token.rotacao + 45) % 360)}
+        className={`absolute top-0 left-0 z-40 group touch-none select-none ${canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        onContextMenu={(e) => canMove && rotacionarToken(e, token.id)}
         onClick={(e) => handleTokenClick(e, token)}
-        onTouchEnd={(e) => handleTokenClick(e, token)}
       >
         {lanternaNoToken && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[1200px] md:h-[1200px] pointer-events-none z-10 transition-transform duration-100"
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] pointer-events-none z-10"
             style={{
-              transform: `translate(-50%, -50%) rotate(${token.rotacao - 90}deg)`,
-              background: 'conic-gradient(from 0deg at 50% 50%, rgba(255,255,240,0.45) 0deg, rgba(255,255,240,0.45) 45deg, transparent 45deg)',
-              WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 5%, transparent 60%)',
-              maskImage: 'radial-gradient(circle at 50% 50%, black 5%, transparent 60%)',
-              filter: 'blur(15px)'
+              transform: `translate(-50%, -50%)`,
+              background: 'conic-gradient(from 0deg at 50% 50%, rgba(255,255,240,0.3) 0deg, rgba(255,255,240,0.3) 45deg, transparent 45deg)',
+              WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 10%, transparent 70%)',
+              maskImage: 'radial-gradient(circle at 50% 50%, black 10%, transparent 70%)',
+              filter: 'blur(20px)'
             }}
           />
         )}
 
-        <div className="absolute -top-10 md:-top-16 left-1/2 -translate-x-1/2 w-16 md:w-24 pointer-events-none z-[50] space-y-1 md:space-y-1.5">
-          <div className="h-1.5 md:h-2 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 pointer-events-none z-[50]">
+          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-xl backdrop-blur-sm">
             <div className={`h-full transition-all duration-500 ${token.type === 'player' ? 'bg-indigo-500' : 'bg-red-600'}`} style={{ width: `${(vidaAtual / vidaMaxima) * 100}%` }} />
           </div>
-          {token.type === 'player' && sanidadeMaxima > 0 && (
-            <div className="h-1 md:h-1.5 w-full bg-black/80 rounded-full overflow-hidden border border-white/10 shadow-2xl">
-              <div className="h-full bg-cyan-500 transition-all duration-500" style={{ width: `${(sanidadeAtual / sanidadeMaxima) * 100}%` }} />
-            </div>
-          )}
         </div>
 
         <div className="relative z-[40]">
           <img
-            src={(data as any)?.foto || (token.type === 'player' ? 'https://i.pinimg.com/originals/ae/2e/56/ae2e562090e0ea66904128f898236113.png' : 'https://i.imgur.com/ae2e562.png')}
-            className={`w-20 h-20 md:w-40 md:h-40 object-contain pointer-events-none transition-all duration-300 ${isSelected ? 'brightness-125 ring-2 md:ring-4 ring-indigo-500/50 rounded-full' : ''}`}
-            style={{ transform: `rotate(${token.rotacao}deg)` }}
+            src={token.foto || data?.foto}
+            className={`w-20 h-20 md:w-40 md:h-40 object-contain pointer-events-none transition-all duration-300 ${isSelected ? 'drop-shadow-[0_0_15px_rgba(99,102,241,0.8)]' : 'drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]'}`}
+            style={{ backgroundColor: 'transparent' }}
           />
-          
-          <div className="absolute -bottom-2 -right-2 flex flex-wrap gap-1 max-w-[60px] justify-end pointer-events-none">
-             {condicoes.includes('machucado') && <div className="w-3 h-3 md:w-4 md:h-4 bg-red-600 rounded-full border border-white shadow-sm" title="Machucado" />}
-             {condicoes.includes('envenenado') && <div className="w-3 h-3 md:w-4 md:h-4 bg-green-500 rounded-full border border-white shadow-sm" title="Envenenado" />}
-             {condicoes.includes('insano') && <div className="w-3 h-3 md:w-4 md:h-4 bg-purple-600 rounded-full border border-white shadow-sm" title="Insano" />}
-             {condicoes.includes('caido') && <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-500 rounded-full border border-white shadow-sm" title="Caído" />}
+          <div className="absolute -bottom-2 -right-2 flex flex-wrap gap-1 max-w-[60px] justify-end">
+             {condicoes.map((c: string) => (
+                <div key={c} className={`w-3 h-3 rounded-full border border-white shadow-sm ${c === 'machucado' ? 'bg-red-600' : c === 'envenenado' ? 'bg-green-500' : c === 'insano' ? 'bg-purple-600' : 'bg-yellow-500'}`} />
+             ))}
           </div>
         </div>
       </div>
@@ -116,541 +81,171 @@ const MapToken = React.memo(({
   )
 })
 
-MapToken.displayName = 'MapToken'
-
-interface ResourceControlProps {
-  label: string
-  current: number
-  max: number
-  resourceKey: string
-  handleChange: (value: number) => void
-}
-
-const ResourceControl = React.memo(({ label, current, max, resourceKey, handleChange }: ResourceControlProps) => {
-  const [value, setValue] = useState(current)
-
-  useEffect(() => {
-    setValue(current)
-  }, [current])
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value)
-    if (!isNaN(newValue) && newValue >= 0 && newValue <= max) {
-      setValue(newValue)
-      handleChange(newValue)
-    }
-  }
-
-  return (
-    <div className="flex flex-col space-y-2">
-      <label className="text-xs font-bold uppercase text-zinc-400">{label} ({current}/{max})</label>
-      <div className="flex items-center gap-3">
-        <input
-          type="range"
-          min="0"
-          max={max}
-          value={value}
-          onChange={handleInputChange}
-          className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer range-sm"
-          style={{ accentColor: resourceKey === 'vidaAtual' ? '#6366f1' : '#06b6d4' }}
-        />
-        <input
-          type="number"
-          min="0"
-          max={max}
-          value={value}
-          onChange={handleInputChange}
-          className="w-16 p-1 text-center bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
-        />
-      </div>
-    </div>
-  )
-})
-
-ResourceControl.displayName = 'ResourceControl'
-
-interface StatusPopupProps {
-  selectedData: (Character & ExtendedMapToken) | ExtendedMapToken
-  handleUpdateResource: (id: string, type: 'player' | 'other', resource: string, value: number) => void
-  toggleLanterna: (id: string, active: boolean) => void
-  toggleCondition: (id: string, condition: string) => void
-  removeToken: (id: string) => void
-  setSelectedToken: (token: null) => void
-  setShowStatus: (show: boolean) => void
-  canControl: boolean
-}
-
-const StatusPopup = React.memo(({
-  selectedData,
-  handleUpdateResource,
-  toggleLanterna,
-  toggleCondition,
-  removeToken,
-  setSelectedToken,
-  setShowStatus,
-  canControl
-}: StatusPopupProps) => {
-  const isPlayer = selectedData?.type === 'player'
-  const { vidaAtual, vidaMaxima, sanidadeAtual, sanidadeMaxima } = selectedData?.recursos || {}
-  const condicoes = selectedData.condicoes || []
-
-  if (!selectedData || !selectedData.recursos) return null
-
-  const conditionsList = [
-      { id: 'machucado', color: 'bg-red-600', label: 'Machucado' },
-      { id: 'envenenado', color: 'bg-green-500', label: 'Envenenado' },
-      { id: 'insano', color: 'bg-purple-600', label: 'Insano' },
-      { id: 'caido', color: 'bg-yellow-500', label: 'Caído' },
-  ]
-
-  return (
-    <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border-t md:border border-zinc-800 p-6 md:p-8 rounded-t-[2rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10 md:slide-in-from-right-10 flex flex-col max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-      <div className="flex justify-between items-center mb-6 md:mb-8 sticky top-0 bg-zinc-950/0 z-10">
-        <div className="flex items-center gap-4">
-           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-black border border-zinc-800 overflow-hidden shadow-2xl shrink-0">
-              <img src={(selectedData as any).foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
-           </div>
-           <h3 className="text-white font-black uppercase text-base md:text-lg italic truncate max-w-[140px]">{(selectedData as any).nome}</h3>
-        </div>
-        <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white transition-colors text-2xl md:text-3xl p-2">✕</button>
-      </div>
-
-      <div className={`space-y-6 pb-4 md:pb-0 ${!canControl ? 'opacity-50 pointer-events-none' : ''}`}>
-        <ResourceControl
-          label="Vida"
-          current={vidaAtual || 0}
-          max={vidaMaxima || 1}
-          resourceKey="vidaAtual"
-          handleChange={(value) => handleUpdateResource(selectedData.id, selectedData.type, 'vidaAtual', value)}
-        />
-
-        {isPlayer && sanidadeMaxima && sanidadeMaxima > 0 && (
-          <ResourceControl
-            label="Sanidade"
-            current={sanidadeAtual || 0}
-            max={sanidadeMaxima || 1}
-            resourceKey="sanidadeAtual"
-            handleChange={(value) => handleUpdateResource(selectedData.id, selectedData.type, 'sanidadeAtual', value)}
-          />
-        )}
-        
-        <div className="space-y-2">
-            <span className="text-xs font-bold uppercase text-zinc-400">Condições</span>
-            <div className="flex gap-2 flex-wrap">
-                {conditionsList.map(c => (
-                    <button 
-                        key={c.id}
-                        onClick={() => toggleCondition(selectedData.id, c.id)}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${condicoes.includes(c.id) ? `${c.color} border-white shadow-lg scale-110` : 'bg-zinc-900 border-zinc-700 opacity-50'}`}
-                        title={c.label}
-                    />
-                ))}
-            </div>
-        </div>
-
-        <div className="pt-4 border-t border-zinc-800 flex flex-col space-y-3">
-          <button
-            onClick={() => toggleLanterna(selectedData.id, !(selectedData as any).lanternaAtiva)}
-            className={`w-full p-3 text-xs font-black uppercase rounded-xl transition-all ${(selectedData as any).lanternaAtiva ? 'bg-yellow-600/20 border border-yellow-500/50 text-yellow-400 shadow-lg' : 'bg-zinc-900/50 border border-zinc-800 text-zinc-400 hover:border-yellow-500/50'}`}
-          >
-            {(selectedData as any).lanternaAtiva ? 'Lanterna Ativa' : 'Ativar Lanterna'}
-          </button>
-
-          <button
-            onClick={() => {
-              removeToken(selectedData.id)
-              setSelectedToken(null)
-              setShowStatus(false)
-            }}
-            className="w-full p-3 text-xs font-black uppercase bg-red-950/10 border border-red-900/20 rounded-xl text-red-500 hover:bg-red-900/20 transition-all"
-          >
-            Remover Token
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-})
-
-StatusPopup.displayName = 'StatusPopup'
-
-const DiceRoller = React.memo(({ onClose }: { onClose: () => void }) => {
-    const [result, setResult] = useState<number | null>(null)
-    
-    const roll = (sides: number) => {
-        const val = Math.floor(Math.random() * sides) + 1
-        setResult(val)
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black/80 z-[400] flex items-center justify-center backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-zinc-950 border border-zinc-800 p-6 rounded-2xl w-[90%] max-w-sm" onClick={e => e.stopPropagation()}>
-                <h3 className="text-center text-white font-black uppercase mb-6 tracking-widest">Rolagem de Dados</h3>
-                
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    {[4, 6, 8, 10, 12, 20, 100].map(sides => (
-                        <button 
-                            key={sides} 
-                            onClick={() => roll(sides)}
-                            className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-400 font-bold hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all"
-                        >
-                            D{sides}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="h-24 flex items-center justify-center bg-black/50 rounded-xl border border-zinc-800 mb-6">
-                    {result !== null ? (
-                        <span className="text-5xl font-black text-white animate-in zoom-in spin-in-180 duration-300">{result}</span>
-                    ) : (
-                        <span className="text-zinc-600 text-xs uppercase">Escolha um dado</span>
-                    )}
-                </div>
-
-                <button onClick={onClose} className="w-full p-3 bg-zinc-900 rounded-xl text-zinc-500 font-bold uppercase text-xs hover:text-white">Fechar</button>
-            </div>
-        </div>
-    )
-})
-
 export default function MapArea() {
-  const { user, isGm, logout } = useAuth()
-  const { tokens: activeTokens, addToken, updateToken, removeToken } = useFirestoreTokens()
-  const { characters, addCharacter, updateCharacterDb } = useFirestoreCharacters()
+  const { characters } = useCharacters()
+  const { user, isGm } = useAuth()
+  const { tokens, addToken, updateToken, removeToken } = useFirestoreTokens()
+  const { scenarios, addScenario, setScenarioActive, removeScenario } = useFirestoreScenarios()
 
-  const [selectedToken, setSelectedToken] = useState<{ id: string, type: 'player' | 'other' } | null>(null)
+  const [selectedToken, setSelectedToken] = useState<any>(null)
   const [showStatus, setShowStatus] = useState(false)
-  const [currentMap, setCurrentMap] = useState(0)
   const [visaoNoturna, setVisaoNoturna] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
-  const [showDice, setShowDice] = useState(false)
   const [mapScale, setMapScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
-  const [isMeasuring, setIsMeasuring] = useState(false)
-  const [rulerStart, setRulerStart] = useState<{x: number, y: number} | null>(null)
-  const [rulerEnd, setRulerEnd] = useState<{x: number, y: number} | null>(null)
+  const [activeTab, setActiveTab] = useState<'tokens' | 'maps'>('tokens')
   
   const transformComponentRef = useRef<any>(null)
   const lastTap = useRef(0)
-  const touchHandled = useRef(false)
+  const activeScenario = scenarios.find(s => s.ativo)
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'game_state', 'global'), (snap) => {
-        if (snap.exists()) {
-            setCurrentMap(snap.data().currentMap || 0)
-        }
-    })
-    return () => unsubscribe()
-  }, [])
+  const handleAddNpc = async () => {
+    const nome = prompt("Nome do NPC:");
+    const pv = Number(prompt("PV Máximo:"));
+    if (!nome || !pv) return
 
-  const handleChangeMap = async (idx: number) => {
-      if (!isGm) return
-      await setDoc(doc(db, 'game_state', 'global'), { currentMap: idx }, { merge: true })
-  }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-  if (!user) {
-    return <LoginPage />
-  }
-
-  const maps = [
-    { name: 'Mansão', url: '/37ffa8f054f6c94695abd202bdb35d50.webp' },
-    { name: 'Floresta', url: '/b32903f64bb78648639117e1e0f12ea9.avif' }
-  ]
-
-  const createNewCharacter = async () => {
-    const nome = prompt("Nome do personagem:")
-    if (!nome) return
-
-    await addCharacter({
-        nome,
-        foto: 'https://i.imgur.com/ae2e562.png',
-        recursos: { vidaAtual: 20, vidaMaxima: 20, sanidadeAtual: 20, sanidadeMaxima: 20 },
-    })
-  }
-
-  const spawnPlayer = useCallback(async (char: Character) => {
-    if (activeTokens.find(t => t.id === char.id)) {
-      setShowSidebar(false)
-      return
-    }
-    await addToken({
-      id: char.id,
-      type: 'player',
-      x: 750,
-      y: 750,
-      recursos: char.recursos,
-      lanternaAtiva: false,
-      rotacao: 90,
-      condicoes: []
-    })
-    setShowSidebar(false)
-  }, [activeTokens, addToken])
-
-  const spawnNPC = useCallback(async () => {
-    const id = `npc-${Date.now()}`
-    await addToken({
-      id,
-      nome: 'Zumbi de Sangue',
-      type: 'other',
-      x: 800,
-      y: 800,
-      foto: '/Miniatura_Zumbi_de_Sangue_em_Desconjura3Fo.webp',
-      recursos: { vidaAtual: 80, vidaMaxima: 100, sanidadeAtual: 0, sanidadeMaxima: 0 },
-      lanternaAtiva: false,
-      rotacao: 0,
-      condicoes: []
-    })
-    setShowSidebar(false)
-  }, [addToken])
-
-  const handleUpdateResource = useCallback((id: string, type: 'player' | 'other', resource: string, value: number) => {
-    if (type === 'player') {
-      updateCharacterDb(id, { recursos: { ...selectedData?.recursos, [resource]: value } as any })
-    } 
-    updateToken(id, { recursos: { ...selectedData?.recursos, [resource]: value } as any })
-  }, [updateCharacterDb, updateToken])
-
-  const toggleCondition = useCallback((id: string, condition: string) => {
-      const token = activeTokens.find(t => t.id === id)
-      if (!token) return
-
-      const currentConditions = token.condicoes || []
-      const newConditions = currentConditions.includes(condition) 
-        ? currentConditions.filter(c => c !== condition)
-        : [...currentConditions, condition]
-      
-      updateToken(id, { condicoes: newConditions })
-  }, [activeTokens, updateToken])
-
-  const updateTokenPos = useCallback((id: string, x: number, y: number) => {
-    updateToken(id, { x, y })
-  }, [updateToken])
-
-  const toggleLanterna = useCallback((id: string, active: boolean) => {
-    updateToken(id, { lanternaAtiva: active })
-  }, [updateToken])
-
-  const rotacionarToken = useCallback((e: React.MouseEvent | React.TouchEvent, id: string, angulo: number) => {
-    e.preventDefault()
-    updateToken(id, { rotacao: angulo })
-  }, [updateToken])
-
-  const handleTokenClick = useCallback((e: React.MouseEvent | React.TouchEvent | any, t: ExtendedMapToken, isDragStart = false) => {
-    e.stopPropagation?.()
-
-    if (e.type === 'touchend') {
-        touchHandled.current = true
-        setTimeout(() => { touchHandled.current = false }, 500)
-    } else if (e.type === 'click' && touchHandled.current) {
-        return
-    }
-
-    if (isMeasuring) return
-
-    if (isDragStart) {
-      setSelectedToken({ id: t.id, type: t.type })
-      return
-    }
-
-    const now = Date.now()
-    const isMobile = e.type === 'touchend'
-
-    if (isMobile) {
-      touchHandled.current = true
-      setTimeout(() => { touchHandled.current = false }, 500)
-    }
-
-    const timeDiff = now - lastTap.current
-
-    if (timeDiff < 500 && timeDiff > 0) {
-      setSelectedToken({ id: t.id, type: t.type })
-      setShowStatus(true)
-      lastTap.current = 0 
-    } else {
-      if (!showStatus) {
-        setSelectedToken({ id: t.id, type: t.type })
-      }
-      lastTap.current = now
-    }
-  }, [showStatus, isMeasuring])
-
-  const getCharData = useCallback((token: ExtendedMapToken | undefined): (Character & ExtendedMapToken) | ExtendedMapToken | null => {
-    if (!token) return null
-    if (token.type === 'player') {
-      const dbChar = characters.find(c => c.id === token.id)
-      if (dbChar) {
-          return {
-              ...token,
-              ...dbChar,
-              x: token.x,
-              y: token.y,
-              rotacao: token.rotacao,
-              lanternaAtiva: token.lanternaAtiva,
-              condicoes: token.condicoes || []
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const base64 = canvas.toDataURL('image/png');
+            
+            addToken({
+              id: `npc-${Date.now()}`,
+              ownerId: 'gm',
+              nome,
+              type: 'other',
+              x: 800,
+              y: 800,
+              foto: base64,
+              recursos: { vidaAtual: pv, vidaMaxima: pv, sanidadeAtual: 0, sanidadeMaxima: 0 },
+              lanternaAtiva: false,
+              rotacao: 0,
+              condicoes: []
+            });
           }
+        }
+        img.src = event.target?.result as string;
       }
-      return token
-    }
-    return token
-  }, [characters])
-
-  const onRulerStart = (e: any) => {
-      if (!isMeasuring) return;
-      e.stopPropagation();
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      
-      const x = (clientX - rect.left) / mapScale;
-      const y = (clientY - rect.top) / mapScale;
-
-      setRulerStart({ x, y });
-      setRulerEnd({ x, y });
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }
 
-  const onRulerMove = (e: any) => {
-      if (!isMeasuring || !rulerStart) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      
-      const x = (clientX - rect.left) / mapScale;
-      const y = (clientY - rect.top) / mapScale;
-      
-      setRulerEnd({ x, y });
-  }
-
-  const onRulerEnd = () => {
-      if (isMeasuring) {
-          setRulerStart(null);
-          setRulerEnd(null);
+  const handleAddMap = async () => {
+    const nome = prompt("Nome do Cenário:"); if (!nome) return
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'
+    input.onchange = (e: any) => {
+      const reader = new FileReader(); reader.readAsDataURL(e.target.files[0])
+      reader.onload = (event) => {
+        const img = new Image(); img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas'); canvas.width = 1600; canvas.height = 1200
+          canvas.getContext('2d')?.drawImage(img, 0, 0, 1600, 1200)
+          addScenario(nome, canvas.toDataURL('image/png', 0.7))
+        }
       }
+    }; input.click()
   }
 
-  const getDistance = () => {
-      if (!rulerStart || !rulerEnd) return 0;
-      const distPx = Math.sqrt(Math.pow(rulerEnd.x - rulerStart.x, 2) + Math.pow(rulerEnd.y - rulerStart.y, 2));
-      return ((distPx / 50) * 1.5).toFixed(1);
-  }
-
-  const currentToken = activeTokens.find(t => t.id === selectedToken?.id)
-  const selectedData = currentToken ? getCharData(currentToken) : null
-  const isSelectedDataOwner = selectedData && ((selectedData as any).ownerId === user.uid || isGm)
+  const selectedData = selectedToken ? tokens.find(t => t.id === selectedToken.id) : null
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-zinc-950 overflow-hidden flex flex-col select-none font-sans">
-
-      <div className="w-full p-2 md:p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center z-[200] shadow-2xl shrink-0 overflow-x-auto">
-        <div className="flex gap-2 md:gap-4 items-center min-w-max">
-          <button onClick={logout} className="text-zinc-500 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all flex flex-col items-center">
-            <span>{isGm ? '🛡️ Mestre' : '👤 Player'}</span>
-            <span className="text-[8px] text-red-500">Sair</span>
-          </button>
-          
-          <div className="w-px h-6 bg-zinc-800 mx-2" />
-
-          <button onClick={() => setShowSidebar(!showSidebar)} className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] font-black uppercase text-white hover:border-indigo-500 transition-all">Tokens</button>
-          <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${visaoNoturna ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'border-zinc-800 text-zinc-600'}`}>Visão</button>
-          <button onClick={() => { setIsMeasuring(!isMeasuring); setRulerStart(null); }} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${isMeasuring ? 'bg-cyan-600 border-cyan-400 text-white' : 'border-zinc-800 text-zinc-600'}`}>Régua</button>
-          <button onClick={() => setShowDice(true)} className="px-3 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-400 rounded-lg hover:border-white hover:text-white transition-all">Dados</button>
-          <button onClick={() => transformComponentRef.current?.resetTransform()} className="px-3 py-2 text-[9px] font-black uppercase border border-zinc-800 text-zinc-600 rounded-lg hover:border-white hover:text-white transition-all tracking-widest">Centralizar</button>
-        </div>
-        <div className="hidden md:flex gap-2">
-          {isGm && maps.map((m, idx) => (
-            <button key={idx} onClick={() => handleChangeMap(idx)} className={`px-3 py-2 text-[9px] font-black uppercase border rounded-lg transition-all ${currentMap === idx ? 'border-white text-white' : 'border-zinc-800 text-zinc-600'}`}>{m.name}</button>
-          ))}
+    <div className="fixed inset-0 w-full h-full bg-[#0a0a0a] overflow-hidden flex flex-col select-none font-sans">
+      <div className="w-full p-2 md:p-4 bg-zinc-950/80 border-b border-zinc-800 flex justify-between items-center z-[200] backdrop-blur-md">
+        <div className="flex gap-2 items-center">
+          <Link to="/" className="text-zinc-500 font-black text-[10px] uppercase tracking-widest px-2">← Sair</Link>
+          <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('tokens'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'tokens' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Tokens</button>
+          {isGm && <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('maps'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'maps' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Mapas</button>}
+          <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg border border-zinc-800 ${visaoNoturna ? 'text-indigo-400 border-indigo-500' : 'text-zinc-600'}`}>Visão</button>
         </div>
       </div>
 
       <div className="flex-1 w-full flex overflow-hidden relative">
-        <div className={`${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 absolute md:relative z-[150] w-64 md:w-72 h-full bg-zinc-950 border-r border-zinc-800 p-6 overflow-y-auto flex flex-col shadow-2xl shrink-0`}>
-          <div className="flex justify-between items-center mb-6">
-              <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest italic">Agentes</h3>
-              <button onClick={createNewCharacter} className="text-[9px] bg-indigo-600 text-white px-2 py-1 rounded font-bold hover:bg-indigo-500">+ NOVO</button>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-3 mb-10">
-            {characters.map(c => (
-              <div key={c.id} className="relative group">
-                <button onClick={(e) => { e.stopPropagation(); spawnPlayer(c); }} className="w-full text-left p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl hover:border-indigo-500 flex items-center gap-4 transition-all">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-black border border-zinc-700 overflow-hidden shrink-0 shadow-lg">
-                    <img src={c.foto || 'https://i.imgur.com/ae2e562.png'} className="w-full h-full object-cover" />
-                    </div>
-                    <span className="text-[9px] md:text-[10px] font-black uppercase text-zinc-300 group-hover:text-white truncate">{c.nome}</span>
-                </button>
-              </div>
-            ))}
-            {characters.length === 0 && <p className="text-zinc-600 text-[10px] text-center italic">Nenhum personagem disponível.</p>}
-          </div>
+        {showSidebar && (
+          <div className="absolute left-0 z-[250] w-72 h-full bg-zinc-950/95 border-r border-zinc-800 p-6 overflow-y-auto backdrop-blur-xl animate-in slide-in-from-left duration-300">
+            <div className="flex justify-between items-center mb-8">
+                <h3 className="text-[11px] font-black uppercase text-indigo-500 tracking-widest italic">{activeTab === 'tokens' ? 'Painel de Tokens' : 'Painel de Mapas'}</h3>
+                <button onClick={() => setShowSidebar(false)} className="text-zinc-500 text-xl">✕</button>
+            </div>
 
-          {isGm && (
-              <div className="border-t border-zinc-800 pt-6 mt-auto">
-                 <h3 className="text-[10px] font-black uppercase text-red-900 tracking-widest mb-3 italic">Mestre</h3>
-                 <button onClick={(e) => { e.stopPropagation(); spawnNPC(); }} className="w-full p-4 bg-red-950/10 border border-red-900/20 rounded-xl text-[10px] font-black uppercase text-red-500 hover:bg-red-900/20 transition-all shadow-lg">+ Criar NPC</button>
+            {activeTab === 'tokens' ? (
+              <div className="space-y-6">
+                <div>
+                    <span className="text-[9px] font-black text-zinc-600 uppercase mb-3 block tracking-tighter">Agentes de Jogadores</span>
+                    <div className="grid gap-2">
+                        {characters.map(c => (
+                            <button key={c.id} onClick={() => { addToken({ id: c.id, ownerId: c.ownerId, type: 'player', x: 750, y: 750, recursos: c.recursos, lanternaAtiva: false, rotacao: 0, nome: c.nome, foto: c.foto, condicoes: [] }); setShowSidebar(false); }} className="w-full flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-indigo-500 transition-all">
+                                <img src={c.foto} className="w-10 h-10 object-cover" />
+                                <span className="text-[10px] font-black uppercase text-zinc-300 truncate">{c.nome}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                {isGm && (
+                    <div>
+                        <span className="text-[9px] font-black text-zinc-600 uppercase mb-3 block">Ferramentas de Mestre</span>
+                        <button onClick={handleAddNpc} className="w-full p-3 bg-red-950/20 border border-red-900/30 rounded-xl text-[10px] font-black uppercase text-red-500 mb-4 hover:bg-red-900/40">+ Criar NPC</button>
+                        <div className="grid gap-2">
+                            {tokens.filter(t => t.type === 'other').map(t => (
+                                <div key={t.id} className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800 rounded-xl">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <img src={t.foto} className="w-8 h-8 object-cover opacity-50" />
+                                        <span className="text-[9px] font-bold text-zinc-500 uppercase truncate">{t.nome}</span>
+                                    </div>
+                                    <button onClick={() => removeToken(t.id)} className="text-red-900 hover:text-red-500 text-xs px-2">✕</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
               </div>
-          )}
-        </div>
+            ) : (
+              <div className="space-y-4">
+                <button onClick={handleAddMap} className="w-full p-3 bg-indigo-900/20 border border-indigo-900/30 rounded-xl text-[10px] font-black uppercase text-indigo-400 mb-4">+ Novo Mapa</button>
+                {scenarios.map(s => (
+                  <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${s.ativo ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900'}`}>
+                    <span onClick={() => { setScenarioActive(s.id); setShowSidebar(false); }} className={`text-[10px] font-black uppercase cursor-pointer flex-1 ${s.ativo ? 'text-white' : 'text-zinc-500'}`}>{s.nome}</span>
+                    <button onClick={() => removeScenario(s.id)} className="text-red-900 hover:text-red-500 ml-2">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="relative flex-1 bg-black overflow-hidden">
           <TransformWrapper
             ref={transformComponentRef}
-            initialScale={1}
-            minScale={0.1}
-            maxScale={8}
-            centerOnInit={true}
+            initialScale={0.8}
+            minScale={0.05}
+            maxScale={10}
             limitToBounds={false}
             doubleClick={{ disabled: true }}
             onTransformed={(ref) => setMapScale(ref.state.scale)}
             onPanningStart={() => setIsPanning(true)}
             onPanningStop={() => setIsPanning(false)}
-            panning={{ disabled: (!!selectedToken && !showStatus) || isMeasuring }}
+            panning={{ disabled: (!!selectedToken && !showStatus) }}
           >
             <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
-              <div 
-                  className="relative inline-block" 
-                  onClick={() => { setSelectedToken(null); setShowStatus(false); }}
-                  onMouseDown={isMeasuring ? onRulerStart : undefined}
-                  onMouseMove={isMeasuring ? onRulerMove : undefined}
-                  onMouseUp={isMeasuring ? onRulerEnd : undefined}
-                  onTouchStart={isMeasuring ? onRulerStart : undefined}
-                  onTouchMove={isMeasuring ? onRulerMove : undefined}
-                  onTouchEnd={isMeasuring ? onRulerEnd : undefined}
-                  style={{ cursor: isMeasuring ? 'crosshair' : 'default' }}
-              >
-                <img src={maps[currentMap].url} className="block h-auto pointer-events-none" style={{ width: '1800px' }} />
-
-                {visaoNoturna && (
-                  <div className="absolute inset-0 bg-black/95 z-30 pointer-events-none transition-opacity duration-300" />
-                )}
-
-                {rulerStart && rulerEnd && isMeasuring && (
-                    <svg className="absolute inset-0 pointer-events-none z-[100] w-full h-full overflow-visible">
-                        <line x1={rulerStart.x} y1={rulerStart.y} x2={rulerEnd.x} y2={rulerEnd.y} stroke="cyan" strokeWidth={4 / mapScale} strokeDasharray="10,5" />
-                        <text x={rulerEnd.x + 20} y={rulerEnd.y} fill="cyan" fontSize={24 / mapScale} fontWeight="bold" style={{ textShadow: '2px 2px 0 #000' }}>
-                            {getDistance()}m
-                        </text>
-                        <circle cx={rulerStart.x} cy={rulerStart.y} r={5 / mapScale} fill="cyan" />
-                        <circle cx={rulerEnd.x} cy={rulerEnd.y} r={5 / mapScale} fill="cyan" />
-                    </svg>
-                )}
-
-                {activeTokens.map((t) => (
-                  <MapToken
-                    key={t.id}
-                    token={t}
-                    selectedToken={selectedToken}
-                    mapScale={mapScale}
-                    visaoNoturna={visaoNoturna}
-                    getCharData={getCharData}
-                    rotacionarToken={rotacionarToken}
-                    handleTokenClick={handleTokenClick}
-                    updateTokenPos={updateTokenPos}
-                    isPanning={isPanning}
-                    showStatus={showStatus}
-                    isMeasuring={isMeasuring}
-                    isGm={isGm}
-                    currentOwnerId={user.uid}
-                  />
+              <div className="relative inline-block" onClick={() => { setSelectedToken(null); setShowStatus(false); }}>
+                {activeScenario && <img src={activeScenario.url} className="block h-auto pointer-events-none transition-all duration-700" style={{ width: '2500px', filter: visaoNoturna ? 'brightness(0.35) contrast(1.2) sepia(0.5) hue-rotate(180deg)': 'brightness(1)' }} />}
+                {tokens.filter((t: any) => t.noMapa !== false).map((t) => (
+                  <MapToken key={t.id} token={t} canMove={isGm || t.ownerId === user?.uid} selectedToken={selectedToken} mapScale={mapScale} visaoNoturna={visaoNoturna} getCharData={(tk: any) => tk.type === 'player' ? { ...tk, ...characters.find(c => c.id === tk.id) } : tk} rotacionarToken={(e: any, id: string) => { e.preventDefault(); updateToken(id, { rotacao: (tokens.find(tk => tk.id === id)?.rotacao || 0) + 45 }) }} handleTokenClick={(e: any, tk: any, drag = false) => { e.stopPropagation(); if (drag) { setSelectedToken({ id: tk.id, type: tk.type }); return; } const now = Date.now(); if (now - lastTap.current < 400) { setSelectedToken({ id: tk.id, type: tk.type }); setShowStatus(true); } else { setSelectedToken({ id: tk.id, type: tk.type }); lastTap.current = now; } }} updateTokenPos={(id: string, x: number, y: number) => updateToken(id, { x, y })} isPanning={isPanning} showStatus={showStatus} />
                 ))}
               </div>
             </TransformComponent>
@@ -658,19 +253,39 @@ export default function MapArea() {
         </div>
       </div>
 
-      {showDice && <DiceRoller onClose={() => setShowDice(false)} />}
-
-      {showStatus && selectedToken && selectedData && (
-        <StatusPopup
-          selectedData={selectedData}
-          handleUpdateResource={handleUpdateResource}
-          toggleLanterna={toggleLanterna}
-          toggleCondition={toggleCondition}
-          removeToken={removeToken}
-          setSelectedToken={setSelectedToken}
-          setShowStatus={setShowStatus}
-          canControl={!!isSelectedDataOwner}
-        />
+      {showStatus && selectedData && (
+        <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-8 rounded-t-[2.5rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-4">
+                    <img src={(selectedData as any).foto} className="w-16 h-16 rounded-2xl object-cover" />
+                    <h3 className="text-white font-black uppercase italic truncate max-w-[140px]">{(selectedData as any).nome}</h3>
+                </div>
+                <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white text-2xl">✕</button>
+            </div>
+            <div className={`space-y-6 ${!(isGm || selectedData.ownerId === user?.uid) ? 'pointer-events-none opacity-60' : ''}`}>
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-zinc-500">Integridade Física</label>
+                    <input type="range" min="0" max={selectedData.recursos.vidaMaxima} value={selectedData.recursos.vidaAtual} onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, vidaAtual: Number(e.target.value) } })} className="w-full accent-red-600" />
+                </div>
+                {selectedData.type === 'player' && (
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-zinc-500">Estabilidade Mental</label>
+                        <input type="range" min="0" max={selectedData.recursos.sanidadeMaxima} value={selectedData.recursos.sanidadeAtual} onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, sanidadeAtual: Number(e.target.value) } })} className="w-full accent-indigo-600" />
+                    </div>
+                )}
+                <button onClick={() => updateToken(selectedData.id, { lanternaAtiva: !(selectedData as any).lanternaAtiva })} className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase transition-all ${(selectedData as any).lanternaAtiva ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>Luz de Lanterna</button>
+                <button 
+                onClick={() => { 
+                  updateToken(selectedData.id, { noMapa: false }); 
+                  setSelectedToken(null); 
+                  setShowStatus(false); 
+                }} 
+                className="w-full p-4 text-[10px] font-black uppercase text-red-600 hover:text-red-400"
+              >
+                Expulsar do Mapa
+              </button>
+            </div>
+        </div>
       )}
     </div>
   )

@@ -2,7 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { auth } from '../services/firebase'
 import { GoogleAuthProvider, signInWithPopup, signOut, User, onAuthStateChanged } from 'firebase/auth'
 
-const GM_EMAIL = "nathansec26@gmail.com"
+// --- IMPORTANTE: COLOQUE SEU E-MAIL AQUI ---
+const GM_EMAIL = "nathansec26@gmail.com" 
+// -------------------------------------------
 
 interface AuthContextType {
   user: User | null
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth)
   }
 
+  // Verifica se o usuário logado é o Mestre
   const isGm = user?.email === GM_EMAIL
 
   return (
