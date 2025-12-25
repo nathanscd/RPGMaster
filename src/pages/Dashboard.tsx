@@ -64,6 +64,10 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link to="/rules" className="p-6 bg-gradient-to-br from-indigo-900/20 to-zinc-900 border border-indigo-500/30 hover:border-indigo-500 rounded-2xl transition-all group">
+              <h3 className="text-xl font-black uppercase text-indigo-400 group-hover:text-white mb-2">📖 Livro de Regras</h3>
+              <p className="text-zinc-500 text-sm">Entre no livro de regras para explorar o sistema.</p>
+           </Link>
            <Link to="/map" className="p-6 bg-gradient-to-br from-indigo-900/20 to-zinc-900 border border-indigo-500/30 hover:border-indigo-500 rounded-2xl transition-all group">
               <h3 className="text-xl font-black uppercase text-indigo-400 group-hover:text-white mb-2">🗺️ Acessar Mapa</h3>
               <p className="text-zinc-500 text-sm">Entre no VTT para mover tokens e explorar.</p>

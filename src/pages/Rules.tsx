@@ -7,70 +7,131 @@ export default function Rulebook() {
   const data = {
     sistema: [
       {
-        title: "Testes e Atributos",
-        content: "Role d20s igual ao valor do atributo. Use o melhor resultado. Se o atributo for 0, role 2d20 e use o pior.",
-        rules: ["FOR: Esforço físico e dano", "AGI: Reflexos e Pontaria", "INT: Investigação e Rituais", "VIG: Saúde e Resistência", "PRE: Presença e Vontade"]
+        title: "Atributos Base",
+        content: "Os cinco pilares que definem as capacidades físicas e mentais do agente.",
+        rules: [
+          "AGI (Agilidade): Pontaria, Pilotagem, Furtividade, Reflexos",
+          "FOR (Força): Luta, Atletismo, Carga, Dano corpo a corpo",
+          "INT (Intelecto): Perícias, Conhecimento, Tecnologia",
+          "PRE (Presença): Vontade, Diplomacia, Rituais, PE",
+          "VIG (Vigor): PV, Fortitude, Resistência física"
+        ]
+      },
+      {
+        title: "Testes e Perícias",
+        content: "Role d20 + Bônus da Perícia. Se for destreinado, role apenas o dado.",
+        rules: [
+          "Destreinado: +0 (Apenas o d20)",
+          "Treinado (NEX 5%): +5 no resultado",
+          "Veterano (NEX 35%): +10 no resultado",
+          "Expert (NEX 70%): +15 no resultado",
+          "1 e 20: 20 é Sucesso Automático (Crítico), 1 é Falha Automática"
+        ]
+      },
+      {
+        title: "Cálculo de Vida (PV) e Esforço (PE)",
+        content: "Definido pela Classe + Atributo. Aumenta a cada 5% de NEX (Nível).",
+        rules: [
+          "Nível do Personagem: NEX dividido por 5",
+          "PV Total: Inicial + [(Ganho Classe + VIG) × (Nível - 1)]",
+          "PE Total: Inicial + [(Ganho Classe + PRE) × (Nível - 1)]",
+          "Sanidade: Valor fixo da classe, não soma atributos",
+          "Peso: Força × 5 (Se Força 0, carrega 2 espaços)"
+        ]
       },
       {
         title: "Dificuldades (DT)",
-        content: "O mestre define o quão difícil é uma ação antes da rolagem.",
-        rules: ["Fácil: 10", "Médio: 15", "Difícil: 20", "Extremo: 25", "Impossível: 30"]
+        content: "O valor alvo que o jogador precisa alcançar para ter sucesso.",
+        rules: ["Fácil: 10", "Médio: 15", "Difícil: 20", "Extremo: 25", "Impossível: 30+"]
       }
     ],
     combate: [
       {
-        title: "Ações no Turno",
-        content: "No seu turno você possui um conjunto limitado de ações.",
-        rules: ["Padrão: Atacar ou usar Ritual", "Movimento: Deslocar-se 9m", "Livre: Falar ou soltar itens", "Reação: Esquivar ou Bloquear"]
+        title: "Estrutura do Turno",
+        content: "O combate é dividido em rodadas. Cada personagem tem um turno.",
+        rules: [
+          "Ação Padrão: Atacar, Conjurar Ritual, Habilidade",
+          "Ação de Movimento: Deslocar até 9m, levantar-se, sacar item",
+          "Ação Livre: Falar, soltar item, gastar PE em reação",
+          "Reação: Esquivar, Bloquear ou Contra-Ataque (gasta reação)"
+        ]
       },
       {
-        title: "Defesa e Dano",
-        content: "A Defesa padrão é 10 + AGI + Bônus de Esquipamento.",
-        rules: ["Esquiva: +AGI na Defesa", "Bloqueio: Reduz dano (Fortitude)", "Crítico: Dobra os dados de dano", "Morrendo: 0 PV deixa você Caído"]
+        title: "Defesa e Reações",
+        content: "Evitar o dano é tão importante quanto causá-lo.",
+        rules: [
+          "Defesa Passiva: 10 + AGI + Equipamentos",
+          "Esquiva: Reação. Soma perícia Reflexos na Defesa",
+          "Bloqueio: Reação. Reduz dano baseado na Fortitude",
+          "Contra-Ataque: Reação. Faz um ataque imediato (se tiver habilidade)"
+        ]
       }
     ],
     armas: [
       {
         name: "Faca",
-        tipo: "Simples / Curto",
-        dano: "1d4",
-        crit: "19 / x2"
+        tipo: "C. a C. / Leve",
+        dano: "1d4 (19)",
+        crit: "x2"
       },
       {
-        name: "Machadinha",
-        tipo: "Simples / Curto",
-        dano: "1d6",
-        crit: "x3"
+        name: "Bastão",
+        tipo: "C. a C. / Uma mão",
+        dano: "1d6 (19)",
+        crit: "x2"
+      },
+      {
+        name: "Katana",
+        tipo: "C. a C. / Duas mãos",
+        dano: "1d10 (19)",
+        crit: "x2"
       },
       {
         name: "Revólver",
-        tipo: "Simples / Médio",
-        dano: "2d6",
-        crit: "18 / x2"
+        tipo: "Bala / Curto",
+        dano: "2d6 (19)",
+        crit: "x3"
       },
       {
-        name: "Espada",
-        tipo: "Marcial / Curto",
-        dano: "1d8",
-        crit: "19 / x2"
+        name: "Pistola",
+        tipo: "Bala / Curto",
+        dano: "1d12 (18)",
+        crit: "x2"
       },
       {
         name: "Fuzil de Assalto",
-        tipo: "Marcial / Longo",
-        dano: "2d10",
+        tipo: "Bala / Médio",
+        dano: "2d10 (19)",
+        crit: "x3"
+      },
+      {
+        name: "Arco Composto",
+        tipo: "Flecha / Médio",
+        dano: "1d10 (19)",
         crit: "x3"
       }
     ],
     rituais: [
       {
-        title: "Elementos",
-        content: "O Outro Lado é dividido em cinco entidades ou conceitos fundamentais.",
-        rules: ["Sangue: Sentimento e dor", "Morte: Tempo e entropia", "Energia: Caos e mudança", "Conhecimento: Lógica e símbolos", "Medo: O abismo infinito"]
+        title: "Custo do Paranormal",
+        content: "Conjurar rituais exige sanidade mental e esforço físico.",
+        rules: [
+          "Custo de PE: 1º Círculo (1 PE), 2º (3 PE), 3º (6 PE), 4º (10 PE)",
+          "Teste de Ocultismo: Necessário para evitar perder Sanidade",
+          "Falha no Custo: Perde Sanidade igual ao Custo do Ritual",
+          "Componentes: Rituais exigem componentes do elemento (sacar é livre)"
+        ]
       },
       {
-        title: "Círculos e Custo",
-        content: "Rituais consomem Pontos de Esforço (PE) e exigem testes de Ocultismo.",
-        rules: ["1º Círculo: 1 PE", "2º Círculo: 3 PE", "3º Círculo: 6 PE", "4º Círculo: 10 PE"]
+        title: "Elementos e Entidades",
+        content: "As cinco energias que compõem o Outro Lado.",
+        rules: [
+          "Sangue (Sentimento): Dano físico, cura, bestialidade",
+          "Morte (Tempo): Necrose, lodo, distorção temporal",
+          "Energia (Caos): Elementos naturais, luz, temperatura, tecnologia",
+          "Conhecimento (Razão): Mente, sigilos, saber proibido",
+          "Medo (Infinito): O impossível, a cola da realidade"
+        ]
       }
     ]
   }
@@ -87,13 +148,13 @@ export default function Rulebook() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20">
           <div>
             <h1 className="text-white font-black uppercase text-5xl italic tracking-tighter">Livro de regras</h1>
-            <p className="text-indigo-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-2">Manual de Regras Ordem Paranormal</p>
+            <p className="text-indigo-500 font-bold text-[10px] uppercase tracking-[0.4em] mt-2">Agência de Ordem Paranormal</p>
           </div>
           
           <div className="flex flex-col md:flex-row gap-4 flex-1 md:max-w-lg">
             <input 
               type="text"
-              placeholder="BUSCAR NO REGISTRO..."
+              placeholder="PESQUISAR REGRA..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-3 text-[10px] font-black uppercase text-white focus:border-indigo-500 outline-none transition-all"
@@ -108,7 +169,7 @@ export default function Rulebook() {
           
           {(filteredSistema.length > 0 || filteredCombate.length > 0) && (
             <section>
-              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">I. Mecânicas Base</h2>
+              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">I. Sistema & Combate</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[...filteredSistema, ...filteredCombate].map((item, i) => (
                   <div key={i} className="bg-zinc-950 border border-zinc-900 p-8 rounded-[2rem] hover:border-zinc-700 transition-all group">
@@ -130,14 +191,14 @@ export default function Rulebook() {
 
           {filteredArmas.length > 0 && (
             <section>
-              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">II. Arsenal e Equipamento</h2>
+              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">II. Arsenal</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-separate border-spacing-y-2">
                   <thead>
                     <tr className="text-zinc-600 text-[9px] font-black uppercase tracking-widest">
                       <th className="px-6 pb-4">Nome</th>
-                      <th className="px-6 pb-4">Tipo/Alcance</th>
-                      <th className="px-6 pb-4">Dano</th>
+                      <th className="px-6 pb-4">Tipo</th>
+                      <th className="px-6 pb-4">Dano (Margem)</th>
                       <th className="px-6 pb-4">Crítico</th>
                     </tr>
                   </thead>
@@ -158,7 +219,7 @@ export default function Rulebook() {
 
           {filteredRituais.length > 0 && (
             <section>
-              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">III. Transcendência</h2>
+              <h2 className="text-zinc-700 font-black text-[10px] uppercase tracking-[0.5em] mb-10 border-b border-zinc-900 pb-4">III. O Outro Lado</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {filteredRituais.map((item, i) => (
                   <div key={i} className="bg-zinc-950 border border-zinc-900 p-8 rounded-[2rem] hover:border-indigo-900 transition-all group">

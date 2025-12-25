@@ -124,6 +124,7 @@ export default function SheetView() {
       <div className="char">
         <div className="flex gap-4 mb-8">
           <Link to="/" className="border border-zinc-800 hover:border-indigo-500 text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-[10px] tracking-widest">⬅ Voltar</Link>
+          <Link to="/rules" className="border border-zinc-800 hover:border-indigo-500 text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-[10px] tracking-widest">📖 Regras</Link>
           <Link to="/map" className="border border-zinc-800 hover:border-indigo-500 text-zinc-500 hover:text-white px-6 py-2 rounded-lg font-bold transition-all uppercase text-[10px] tracking-widest">🗺️ Mapa</Link>
         </div>
 
@@ -196,29 +197,90 @@ export default function SheetView() {
         <Section title="Rolagem Livre"><FreeDiceRoller /></Section>
         <Section title="Habilidades">
           <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-            {(character.habilidades || []).map((hab, i) => hab.roll && <DiceRoller key={i} label={hab.nome} roll={hab.roll} />)}
-            {(!character.habilidades || character.habilidades.length === 0) && <span className="text-zinc-600 text-xs italic uppercase">Vazio...</span>}
+            <div className="grid gap-4">
+              {(character.habilidades || []).map((hab, i) => (
+                <div key={i} className="p-5 bg-zinc-900/40 border border-zinc-800/60 rounded-3xl flex flex-col gap-3 transition-all hover:border-indigo-500/30 group">
+                  <div className="flex justify-between items-start gap-4">
+                    <h4 className="text-white font-black uppercase text-[11px] tracking-[0.15em] leading-tight">
+                      {hab.nome}
+                    </h4>
+                    {hab.custo && (
+                      <div className="shrink-0 flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full">
+                        <span className="text-indigo-400 font-black text-[10px] uppercase tracking-tighter">
+                          {hab.custo} PE
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {hab.desc && (
+                    <p className="text-zinc-500 text-[11px] font-medium leading-relaxed italic">
+                      {hab.desc}
+                    </p>
+                  )}
+                </div>
+              ))}
+              
+              {(!character.habilidades || character.habilidades.length === 0) && (
+                <div className="py-10 flex flex-col items-center justify-center border-2 border-dashed border-zinc-900 rounded-3xl">
+                  <p className="text-zinc-700 text-[10px] font-black uppercase tracking-widest">
+                    Nenhum registro de habilidade
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </Section>
         <Section title="Armas">
           <div className="grid grid-cols-1 gap-2">
-            {(character.armas || []).map((arma, i) => <DiceRoller key={i} label={arma.nome} roll={arma.roll} />)}
-            {(!character.armas || character.armas.length === 0) && <span className="text-zinc-600 text-[10px] italic text-center py-4 uppercase">Desarmado</span>}
+            {(character.armas || []).map((arma: any, i: number) => (
+              <div key={i} className="flex flex-col gap-1 p-3 bg-zinc-900/50 border border-zinc-800 rounded-xl">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">{arma.nome}</span>
+                  <DiceRoller label="Atacar" roll={arma.roll} />
+                </div>
+                {arma.descricao && (
+                  <p className="text-[10px] text-zinc-500 italic leading-relaxed">{arma.descricao}</p>
+                )}
+              </div>
+            ))}
+            {(!character.armas || character.armas.length === 0) && (
+              <span className="text-zinc-600 text-[10px] italic text-center py-4 uppercase">Desarmado</span>
+            )}
           </div>
         </Section>
+
         <Section title="Inventário">
           <div className="space-y-2">
             {inventario.map((item: any, i: number) => (
-              <div key={i} className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
-                <div className="flex items-center gap-3"><span className="text-xs font-bold text-zinc-200 uppercase">{item.nome}</span><span className="text-[9px] text-zinc-500 bg-black px-2 py-0.5 rounded-lg border border-zinc-800">Carga {item.peso}</span></div>
-                <button onClick={() => handleRemoveItem(i, item)} className="text-zinc-700 hover:text-red-500 transition-colors p-1">✕</button>
+              <div key={i} className="flex flex-col bg-zinc-900/50 p-3 rounded-xl border border-zinc-800 gap-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-zinc-200 uppercase">{item.nome}</span>
+                    <span className="text-[9px] text-zinc-500 bg-black px-2 py-0.5 rounded-lg border border-zinc-800">
+                      Carga {item.peso}
+                    </span>
+                  </div>
+                  <button onClick={() => handleRemoveItem(i, item)} className="text-zinc-700 hover:text-red-500 transition-colors p-1">✕</button>
+                </div>
+                {item.descricao && (
+                  <p className="text-[10px] text-zinc-500 leading-snug border-t border-zinc-800/50 pt-2 italic">
+                    {item.descricao}
+                  </p>
+                )}
               </div>
             ))}
+            
             <div className="flex justify-between text-[10px] font-black uppercase text-zinc-500 mt-4 pt-4 border-t border-zinc-900">
               <span>Carga Total</span>
-              <span className={pesoTotal > (character.inventarioMaxPeso || 5) ? "text-red-500" : "text-white"}>{pesoTotal} / {character.inventarioMaxPeso || 5}</span>
+              <span className={pesoTotal > (character.inventarioMaxPeso || 5) ? "text-red-500" : "text-white"}>
+                {pesoTotal} / {character.inventarioMaxPeso || 5}
+              </span>
             </div>
-            <Link to="/add-item" state={{ characterId: character.id }} className="flex justify-center items-center w-full bg-zinc-900/30 hover:bg-zinc-800 py-3 rounded-xl text-[10px] font-black uppercase text-zinc-500 mt-4 border border-zinc-800 border-dashed transition-all">+ Novo Item</Link>
+            
+            <Link to="/add-item" state={{ characterId: character.id }} className="flex justify-center items-center w-full bg-zinc-900/30 hover:bg-zinc-800 py-3 rounded-xl text-[10px] font-black uppercase text-zinc-500 mt-4 border border-zinc-800 border-dashed transition-all">
+              + Novo Item
+            </Link>
           </div>
         </Section>
       </div>

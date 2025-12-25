@@ -53,7 +53,8 @@ export interface Character {
   pericias?: Record<string, number>
   habilidades?: Array<{
     nome: string
-    roll: { quantidade: number; dado: number }
+    desc: string
+    custo: number
   }>
   armas?: any[]
   inventario?: any[]
