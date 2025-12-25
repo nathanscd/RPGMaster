@@ -35,7 +35,6 @@ export default function FreeDiceRoller() {
         .animate-dice { animation: dice-shake 0.15s infinite; }
       `}</style>
       
-      {/* 1. CONFIGURAÇÃO */}
       <div className="flex items-center justify-between bg-black p-2 rounded border border-blue-900/30">
         <div className="flex items-center gap-2">
           <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tighter">Qtd</span>

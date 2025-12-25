@@ -4,7 +4,6 @@ import { useCharacters } from '../context/CharacterContext'
 import { useAuth } from '../context/AuthContext'
 import { Character, InventoryItem } from '../types/Character'
 
-// LISTA PADRÃO DE ITENS (Substitui o backend antigo)
 const STANDARD_ITEMS: InventoryItem[] = [
     { id: 'item-1', nome: 'Pistola', tipo: 'arma', peso: 1, roll: { quantidade: 1, dado: 12 } },
     { id: 'item-2', nome: 'Fuzil de Assalto', tipo: 'arma', peso: 2, roll: { quantidade: 2, dado: 10 } },
@@ -23,8 +22,7 @@ export default function AddItem() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { characters, updateCharacter } = useCharacters()
-  
-  // Pega o ID passado via state do SheetView
+
   const characterId = location.state?.characterId
 
   const [availableItems, setAvailableItems] = useState<InventoryItem[]>([])
@@ -33,7 +31,6 @@ export default function AddItem() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   
-  // Estados do Modal
   const [customName, setCustomName] = useState('')
   const [customWeight, setCustomWeight] = useState(1)
   const [customObs, setCustomObs] = useState('')
@@ -41,15 +38,12 @@ export default function AddItem() {
   const [customDiceQtd, setCustomDiceQtd] = useState(1)
   const [customDiceFace, setCustomDiceFace] = useState(6)
 
-  // Busca o personagem na lista carregada
   const character = characters.find(c => c.id === characterId)
 
   useEffect(() => {
-    // Carrega os itens padrão
     setAvailableItems(STANDARD_ITEMS)
   }, [])
 
-  // Se não veio ID ou não achou o personagem, redireciona
   if (!characterId || !character) {
     return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 gap-4">
@@ -64,20 +58,16 @@ export default function AddItem() {
   const capacidade = character.inventarioMaxPeso || 5
   const percentPeso = Math.min(100, (pesoAtual / capacidade) * 100)
 
-  // Função Principal de Adicionar
   async function addItem(item: InventoryItem) {
-    // 1. Verifica Duplicidade (exceto customizados)
     const jaExiste = !item.id.startsWith('custom-') && character?.inventario?.some((i: any) => i.id === item.id)
     if (jaExiste) return
 
-    // 2. Verifica Peso
     const pesoNovo = pesoAtual + item.peso
     if (pesoNovo > capacidade) {
        alert(`Inventário cheio! Capacidade: ${capacidade}`)
        return
     }
 
-    // 3. Prepara os novos arrays
     const itemParaInventario = { ...item, instanceId: Date.now() }
     const novoInventario = [...(character?.inventario || []), itemParaInventario]
     
@@ -88,7 +78,6 @@ export default function AddItem() {
         novasArmas.push({ nome: item.nome, roll: item.roll })
     }
 
-    // 4. Salva no Firebase
     await updateCharacter(character!.id, {
         inventario: novoInventario,
         armas: novasArmas
@@ -115,7 +104,6 @@ export default function AddItem() {
 
     addItem(newItem)
     
-    // Reset Modal
     setCustomName('')
     setCustomWeight(1)
     setCustomObs('')

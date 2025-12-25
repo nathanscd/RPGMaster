@@ -12,8 +12,6 @@ interface CharacterContextType {
 const CharacterContext = createContext<CharacterContextType>({} as CharacterContextType)
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
-  // ATENÇÃO: Se esta linha abaixo estiver diferente, o erro vai continuar.
-  // Ela deve usar o hook do Firebase, NÃO o axios.
   const { characters, addCharacter, updateCharacterDb, removeCharacter } = useFirestoreCharacters()
 
   return (
