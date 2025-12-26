@@ -9,7 +9,9 @@ import { useFirestoreScenarios } from '../hooks/useFirestoreScenarios'
 import { db } from '../services/firebase'
 import { doc, updateDoc } from 'firebase/firestore'
 
-const MapToken = React.memo(({
+const DEFAULT_MAP_URL = "https://i.imgur.com/3s13eK6.png"
+
+const MapToken = ({
   token,
   selectedToken,
   mapScale,
@@ -28,11 +30,11 @@ const MapToken = React.memo(({
   const lanternaNoToken = token.lanternaAtiva && visaoNoturna
   const isDraggableDisabled = !canMove || (isSelected && showStatus) || isPanning
 
-  const vidaAtual = data?.recursos?.vidaAtual || 0
-  const vidaMaxima = data?.recursos?.vidaMaxima || 1
-  const sanidadeAtual = data?.recursos?.sanidadeAtual || 0
-  const sanidadeMaxima = data?.recursos?.sanidadeMaxima || 1
-  const condicoes = (token as any).condicoes || []
+  const vidaAtual = token.recursos?.vidaAtual ?? data?.recursos?.vidaAtual ?? 0
+  const vidaMaxima = token.recursos?.vidaMaxima ?? data?.recursos?.vidaMaxima ?? 1
+  const sanidadeAtual = token.recursos?.sanidadeAtual ?? data?.recursos?.sanidadeAtual ?? 0
+  const sanidadeMaxima = token.recursos?.sanidadeMaxima ?? data?.recursos?.sanidadeMaxima ?? 1
+  const condicoes = token.condicoes || []
 
   const showBars = token.type === 'player'
 
@@ -95,13 +97,13 @@ const MapToken = React.memo(({
       </div>
     </Draggable>
   )
-})
+}
 
 export default function MapArea() {
   const { characters } = useCharacters()
   const { user, isGm } = useAuth()
   const { tokens, addToken, updateToken, removeToken } = useFirestoreTokens()
-  const { scenarios, addScenario, removeScenario } = useFirestoreScenarios() 
+  const { scenarios, addScenario, removeScenario } = useFirestoreScenarios()
 
   const [selectedToken, setSelectedToken] = useState<any>(null)
   const [showStatus, setShowStatus] = useState(false)
@@ -110,6 +112,7 @@ export default function MapArea() {
   const [mapScale, setMapScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [activeTab, setActiveTab] = useState<'tokens' | 'maps'>('tokens')
+  const [mapHidden, setMapHidden] = useState(false)
   
   const transformComponentRef = useRef<any>(null)
   const lastTap = useRef(0)
@@ -121,7 +124,6 @@ export default function MapArea() {
         return Promise.resolve();
     });
     await Promise.all(batchPromises);
-
     if (!currentState) {
         await updateDoc(doc(db, 'scenarios', id), { ativo: true });
     }
@@ -198,7 +200,23 @@ export default function MapArea() {
   }
 
   const selectedData = selectedToken ? tokens.find(t => t.id === selectedToken.id) : null
+  
+  const charData = selectedData && selectedData.type === 'player' 
+    ? characters.find(c => c.id === selectedData.id) 
+    : null;
+
+  const displayData = selectedData ? {
+    ...charData, 
+    ...selectedData,
+    recursos: {
+        ...(charData?.recursos || {}),
+        ...(selectedData.recursos || {})
+    },
+    inventario: charData?.inventario || []
+  } : null;
+
   const canEdit = isGm || (selectedData?.type === 'player' && selectedData?.ownerId === user?.uid)
+  const isMapVisible = activeScenario && activeScenario.ativo && !mapHidden
 
   return (
     <div className="fixed inset-0 w-full h-full bg-[#0a0a0a] overflow-hidden flex flex-col select-none font-sans">
@@ -207,6 +225,15 @@ export default function MapArea() {
           <Link to="/" className="text-zinc-500 font-black text-[10px] uppercase tracking-widest px-2">← Sair</Link>
           <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('tokens'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'tokens' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Tokens</button>
           {isGm && <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('maps'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'maps' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Mapas</button>}
+          {isGm && (
+             <button 
+                onClick={() => setMapHidden(!mapHidden)} 
+                className={`px-3 py-2 rounded-lg border border-zinc-800 transition-all ${mapHidden ? 'text-red-500 bg-red-900/20' : 'text-zinc-600'}`}
+                title="Ocultar/Mostrar Mapa (Apenas Visual)"
+             >
+                {mapHidden ? '🙈' : '👁️'}
+             </button>
+          )}
           <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg border border-zinc-800 ${visaoNoturna ? 'text-indigo-400 border-indigo-500' : 'text-zinc-600'}`}>Visão</button>
         </div>
       </div>
@@ -284,7 +311,7 @@ export default function MapArea() {
             <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
               <div className="relative inline-block" onClick={() => { setSelectedToken(null); setShowStatus(false); }}>
                 
-                {activeScenario && activeScenario.ativo && (
+                {isMapVisible ? (
                     <img 
                         src={activeScenario.url} 
                         className="block max-w-none pointer-events-none absolute top-0 left-0 z-0" 
@@ -294,11 +321,20 @@ export default function MapArea() {
                             filter: visaoNoturna ? 'brightness(0.35) contrast(1.2) sepia(0.5) hue-rotate(180deg)' : 'brightness(1)' 
                         }} 
                     />
+                ) : (
+                    <div 
+                        className="fixed inset-0 z-[200]"
+                        style={{ 
+                            backgroundImage: `url('https://i.imgur.com/Xejyh4G.png')`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: '1000px'
+                        }}
+                    />
                 )}
                 
                 <div style={{ width: '3000px', height: '3000px', pointerEvents: 'none' }} />
 
-                {tokens.filter((t: any) => t.noMapa !== false).map((t) => (
+                {isMapVisible && tokens.filter((t: any) => t.noMapa !== false).map((t) => (
                   <MapToken 
                     key={t.id} 
                     token={t} 
@@ -321,70 +357,85 @@ export default function MapArea() {
         </div>
       </div>
 
-      {showStatus && selectedData && (
-        <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-8 rounded-t-[2.5rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-8">
+      {showStatus && displayData && (
+        <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-6 rounded-t-[2rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10 flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 shrink-0">
                 <div className="flex items-center gap-4">
-                    <img src={(selectedData as any).foto} className="w-16 h-16 rounded-2xl object-cover" />
-                    <h3 className="text-white font-black uppercase italic truncate max-w-[140px]">{(selectedData as any).nome}</h3>
+                    <img src={displayData.foto} className="w-12 h-12 rounded-xl object-cover border border-zinc-800" />
+                    <h3 className="text-white font-black uppercase italic truncate max-w-[140px]">{displayData.nome}</h3>
                 </div>
-                <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white text-2xl">✕</button>
+                <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white text-xl p-2">✕</button>
             </div>
 
-            <div className={`space-y-6 ${!canEdit ? 'pointer-events-none opacity-50 blur-[2px]' : ''}`}>
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-zinc-500">Integridade Física</label>
-                    <div className="flex items-center gap-3">
+            <div className="overflow-y-auto pr-2 space-y-6 flex-1">
+                <div className={`space-y-6 ${!canEdit ? 'pointer-events-none opacity-50 blur-[1px]' : ''}`}>
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[9px] font-black uppercase text-zinc-500">
+                            <span>PV</span>
+                            <span>{displayData.recursos?.vidaAtual || 0}/{displayData.recursos?.vidaMaxima || 1}</span>
+                        </div>
                         <input 
                             type="range" 
                             min="0" 
-                            max={selectedData.recursos.vidaMaxima} 
-                            value={selectedData.recursos.vidaAtual} 
-                            onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, vidaAtual: Number(e.target.value) } })} 
+                            max={displayData.recursos?.vidaMaxima || 1} 
+                            value={displayData.recursos?.vidaAtual || 0} 
+                            onChange={(e) => updateToken(displayData.id, { recursos: { ...displayData.recursos, vidaAtual: Number(e.target.value) } })} 
                             className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                            style={{ accentColor: '#dc2626' }}
+                            style={{ accentColor: '#dc2626' }} 
                         />
-                        <span className="text-white font-bold text-xs w-8 text-right">{selectedData.recursos.vidaAtual}</span>
                     </div>
-                </div>
-                {selectedData.type === 'player' && (
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-zinc-500">Estabilidade Mental</label>
-                         <div className="flex items-center gap-3">
-                            <input 
+
+                    {displayData.type === 'player' && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[9px] font-black uppercase text-zinc-500">
+                                <span>SAN</span>
+                                <span>{displayData.recursos?.sanidadeAtual || 0}/{displayData.recursos?.sanidadeMaxima || 1}</span>
+                            </div>
+                             <input 
                                 type="range" 
                                 min="0" 
-                                max={selectedData.recursos.sanidadeMaxima} 
-                                value={selectedData.recursos.sanidadeAtual} 
-                                onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, sanidadeAtual: Number(e.target.value) } })} 
+                                max={displayData.recursos?.sanidadeMaxima || 1} 
+                                value={displayData.recursos?.sanidadeAtual || 0} 
+                                onChange={(e) => updateToken(displayData.id, { recursos: { ...displayData.recursos, sanidadeAtual: Number(e.target.value) } })} 
                                 className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
                                 style={{ accentColor: '#06b6d4' }} 
                             />
-                            <span className="text-white font-bold text-xs w-8 text-right">{selectedData.recursos.sanidadeAtual}</span>
                         </div>
-                    </div>
-                )}
-                
-                <button onClick={() => updateToken(selectedData.id, { lanternaAtiva: !(selectedData as any).lanternaAtiva })} className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase transition-all ${(selectedData as any).lanternaAtiva ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>Luz de Lanterna</button>
-                
-                {canEdit && (
-                   <button 
-                    onClick={async () => { 
-                        try {
-                            await updateToken(selectedData.id, { noMapa: false }); 
-                            setSelectedToken(null); 
-                            setShowStatus(false); 
-                        } catch (e) {
-                            console.error(e)
-                        }
-                    }} 
-                    className="w-full p-4 text-[10px] font-black uppercase text-red-600 hover:text-red-400"
-                  >
-                    Expulsar do Mapa
-                  </button>
-                )}
+                    )}
+                    
+                    <button onClick={() => updateToken(displayData.id, { lanternaAtiva: !displayData.lanternaAtiva })} className={`w-full py-3 rounded-xl text-[10px] font-black uppercase transition-all ${displayData.lanternaAtiva ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>Luz de Lanterna</button>
+                    
+                    {displayData.type === 'player' && displayData.inventario && (
+                        <div className="pt-4 border-t border-zinc-800">
+                            <h4 className="text-[10px] font-black uppercase text-zinc-500 mb-3">Inventário Rápido</h4>
+                            <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                                {displayData.inventario.length > 0 ? displayData.inventario.map((item: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center p-2 bg-zinc-900 rounded-lg border border-zinc-800">
+                                        <span className="text-[9px] text-zinc-300 font-bold uppercase truncate">{item.nome}</span>
+                                        <span className="text-[8px] text-zinc-600 bg-black px-1.5 py-0.5 rounded border border-zinc-800">{item.peso}</span>
+                                    </div>
+                                )) : <p className="text-[9px] text-zinc-700 italic text-center">Vazio</p>}
+                            </div>
+                        </div>
+                    )}
+
+                    {canEdit && (
+                       <button 
+                        onClick={async () => { 
+                            try {
+                                await updateToken(displayData.id, { noMapa: false }); 
+                                setSelectedToken(null); 
+                                setShowStatus(false); 
+                            } catch (e) { console.error(e) }
+                        }} 
+                        className="w-full py-3 text-[10px] font-black uppercase text-red-600 bg-red-950/20 border border-red-900/20 rounded-xl hover:bg-red-900/30 transition-all"
+                      >
+                        Expulsar do Mapa
+                      </button>
+                    )}
+                </div>
+                 {!canEdit && <p className="text-center text-[10px] text-red-500 font-bold mt-4 uppercase">Apenas leitura</p>}
             </div>
-             {!canEdit && <p className="text-center text-[10px] text-red-500 font-bold mt-4 uppercase">Apenas leitura</p>}
         </div>
       )}
     </div>
