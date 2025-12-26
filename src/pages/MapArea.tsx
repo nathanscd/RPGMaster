@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import Draggable from 'react-draggable'
 import { Link } from 'react-router-dom'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
@@ -6,7 +6,8 @@ import { useCharacters } from '../context/CharacterContext'
 import { useAuth } from '../context/AuthContext'
 import { useFirestoreTokens } from '../hooks/useFirestoreTokens'
 import { useFirestoreScenarios } from '../hooks/useFirestoreScenarios'
-import { Character, MapToken as MapTokenType } from '../types/Character'
+import { db } from '../services/firebase'
+import { doc, updateDoc } from 'firebase/firestore'
 
 const MapToken = React.memo(({
   token,
@@ -19,7 +20,8 @@ const MapToken = React.memo(({
   updateTokenPos,
   showStatus,
   isPanning,
-  canMove
+  canMove,
+  isGm
 }: any) => {
   const data = getCharData(token)
   const isSelected = selectedToken?.id === token.id
@@ -28,7 +30,11 @@ const MapToken = React.memo(({
 
   const vidaAtual = data?.recursos?.vidaAtual || 0
   const vidaMaxima = data?.recursos?.vidaMaxima || 1
+  const sanidadeAtual = data?.recursos?.sanidadeAtual || 0
+  const sanidadeMaxima = data?.recursos?.sanidadeMaxima || 1
   const condicoes = (token as any).condicoes || []
+
+  const showBars = token.type === 'player'
 
   return (
     <Draggable
@@ -42,7 +48,7 @@ const MapToken = React.memo(({
       disabled={isDraggableDisabled}
     >
       <div
-        className={`absolute top-0 left-0 z-40 group touch-none select-none ${canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        className={`absolute top-0 left-0 z-[100] group touch-none select-none ${canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onContextMenu={(e) => canMove && rotacionarToken(e, token.id)}
         onClick={(e) => handleTokenClick(e, token)}
       >
@@ -58,17 +64,27 @@ const MapToken = React.memo(({
           />
         )}
 
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 pointer-events-none z-[50]">
-          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 shadow-xl backdrop-blur-sm">
-            <div className={`h-full transition-all duration-500 ${token.type === 'player' ? 'bg-indigo-500' : 'bg-red-600'}`} style={{ width: `${(vidaAtual / vidaMaxima) * 100}%` }} />
+        {showBars && (
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 pointer-events-none z-[50] flex flex-col gap-1">
+            <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/10 shadow-sm">
+              <div className="h-full bg-red-600 transition-all duration-300" style={{ width: `${Math.min((vidaAtual / vidaMaxima) * 100, 100)}%` }} />
+            </div>
+            {sanidadeMaxima > 0 && (
+              <div className="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/10 shadow-sm">
+                <div className="h-full bg-cyan-500 transition-all duration-300" style={{ width: `${Math.min((sanidadeAtual / sanidadeMaxima) * 100, 100)}%` }} />
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         <div className="relative z-[40]">
           <img
             src={token.foto || data?.foto}
             className={`w-20 h-20 md:w-40 md:h-40 object-contain pointer-events-none transition-all duration-300 ${isSelected ? 'drop-shadow-[0_0_15px_rgba(99,102,241,0.8)]' : 'drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]'}`}
-            style={{ backgroundColor: 'transparent' }}
+            style={{ 
+              transform: `rotate(${token.rotacao}deg)`,
+              backgroundColor: 'transparent'
+            }}
           />
           <div className="absolute -bottom-2 -right-2 flex flex-wrap gap-1 max-w-[60px] justify-end">
              {condicoes.map((c: string) => (
@@ -85,7 +101,7 @@ export default function MapArea() {
   const { characters } = useCharacters()
   const { user, isGm } = useAuth()
   const { tokens, addToken, updateToken, removeToken } = useFirestoreTokens()
-  const { scenarios, addScenario, setScenarioActive, removeScenario } = useFirestoreScenarios()
+  const { scenarios, addScenario, removeScenario } = useFirestoreScenarios() 
 
   const [selectedToken, setSelectedToken] = useState<any>(null)
   const [showStatus, setShowStatus] = useState(false)
@@ -98,6 +114,18 @@ export default function MapArea() {
   const transformComponentRef = useRef<any>(null)
   const lastTap = useRef(0)
   const activeScenario = scenarios.find(s => s.ativo)
+
+  const toggleScenario = async (id: string, currentState: boolean) => {
+    const batchPromises = scenarios.map(s => {
+        if (s.ativo) return updateDoc(doc(db, 'scenarios', s.id), { ativo: false });
+        return Promise.resolve();
+    });
+    await Promise.all(batchPromises);
+
+    if (!currentState) {
+        await updateDoc(doc(db, 'scenarios', id), { ativo: true });
+    }
+  }
 
   const handleAddNpc = async () => {
     const nome = prompt("Nome do NPC:");
@@ -135,7 +163,8 @@ export default function MapArea() {
               recursos: { vidaAtual: pv, vidaMaxima: pv, sanidadeAtual: 0, sanidadeMaxima: 0 },
               lanternaAtiva: false,
               rotacao: 0,
-              condicoes: []
+              condicoes: [],
+              noMapa: true
             });
           }
         }
@@ -154,15 +183,22 @@ export default function MapArea() {
       reader.onload = (event) => {
         const img = new Image(); img.src = event.target?.result as string
         img.onload = () => {
-          const canvas = document.createElement('canvas'); canvas.width = 1600; canvas.height = 1200
-          canvas.getContext('2d')?.drawImage(img, 0, 0, 1600, 1200)
-          addScenario(nome, canvas.toDataURL('image/png', 0.7))
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+             addScenario(nome, canvas.toDataURL('image/jpeg', 0.8)) 
+          }
         }
       }
     }; input.click()
   }
 
   const selectedData = selectedToken ? tokens.find(t => t.id === selectedToken.id) : null
+  const canEdit = isGm || (selectedData?.type === 'player' && selectedData?.ownerId === user?.uid)
 
   return (
     <div className="fixed inset-0 w-full h-full bg-[#0a0a0a] overflow-hidden flex flex-col select-none font-sans">
@@ -171,7 +207,7 @@ export default function MapArea() {
           <Link to="/" className="text-zinc-500 font-black text-[10px] uppercase tracking-widest px-2">← Sair</Link>
           <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('tokens'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'tokens' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Tokens</button>
           {isGm && <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('maps'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'maps' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Mapas</button>}
-          {isGm && <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg border border-zinc-800 ${visaoNoturna ? 'text-indigo-400 border-indigo-500' : 'text-zinc-600'}`}>Visão</button>}
+          <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg border border-zinc-800 ${visaoNoturna ? 'text-indigo-400 border-indigo-500' : 'text-zinc-600'}`}>Visão</button>
         </div>
       </div>
 
@@ -189,7 +225,7 @@ export default function MapArea() {
                     <span className="text-[9px] font-black text-zinc-600 uppercase mb-3 block tracking-tighter">Agentes de Jogadores</span>
                     <div className="grid gap-2">
                         {characters.map(c => (
-                            <button key={c.id} onClick={() => { addToken({ id: c.id, ownerId: c.ownerId, type: 'player', x: 750, y: 750, recursos: c.recursos, lanternaAtiva: false, rotacao: 0, nome: c.nome, foto: c.foto, condicoes: [] }); setShowSidebar(false); }} className="w-full flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-indigo-500 transition-all">
+                            <button key={c.id} onClick={() => { addToken({ id: c.id, ownerId: c.ownerId, type: 'player', x: 750, y: 750, recursos: c.recursos, lanternaAtiva: false, rotacao: 0, nome: c.nome, foto: c.foto, condicoes: [], noMapa: true }); setShowSidebar(false); }} className="w-full flex items-center gap-3 p-2 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-indigo-500 transition-all">
                                 <img src={c.foto} className="w-10 h-10 object-cover" />
                                 <span className="text-[10px] font-black uppercase text-zinc-300 truncate">{c.nome}</span>
                             </button>
@@ -202,12 +238,12 @@ export default function MapArea() {
                         <button onClick={handleAddNpc} className="w-full p-3 bg-red-950/20 border border-red-900/30 rounded-xl text-[10px] font-black uppercase text-red-500 mb-4 hover:bg-red-900/40">+ Criar NPC</button>
                         <div className="grid gap-2">
                             {tokens.filter(t => t.type === 'other').map(t => (
-                                <div key={t.id} className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800 rounded-xl">
+                                <div key={t.id} className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800 rounded-xl cursor-pointer" onClick={() => updateToken(t.id, { noMapa: true })}>
                                     <div className="flex items-center gap-2 truncate">
-                                        <img src={t.foto} className="w-8 h-8 object-cover opacity-50" />
+                                        <img src={t.foto} className="w-8 h-8 rounded-lg object-cover opacity-50" />
                                         <span className="text-[9px] font-bold text-zinc-500 uppercase truncate">{t.nome}</span>
                                     </div>
-                                    <button onClick={() => removeToken(t.id)} className="text-red-900 hover:text-red-500 text-xs px-2">✕</button>
+                                    <button onClick={(e) => { e.stopPropagation(); removeToken(t.id); }} className="text-red-900 hover:text-red-500 text-xs px-2">✕</button>
                                 </div>
                             ))}
                         </div>
@@ -218,9 +254,13 @@ export default function MapArea() {
               <div className="space-y-4">
                 <button onClick={handleAddMap} className="w-full p-3 bg-indigo-900/20 border border-indigo-900/30 rounded-xl text-[10px] font-black uppercase text-indigo-400 mb-4">+ Novo Mapa</button>
                 {scenarios.map(s => (
-                  <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${s.ativo ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-900'}`}>
-                    <span onClick={() => { setScenarioActive(s.id); setShowSidebar(false); }} className={`text-[10px] font-black uppercase cursor-pointer flex-1 ${s.ativo ? 'text-white' : 'text-zinc-500'}`}>{s.nome}</span>
-                    <button onClick={() => removeScenario(s.id)} className="text-red-900 hover:text-red-500 ml-2">✕</button>
+                  <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${s.ativo ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900'}`}>
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleScenario(s.id, s.ativo)}>
+                        <div className={`w-3 h-3 rounded-full ${s.ativo ? 'bg-green-500' : 'bg-zinc-700'}`} />
+                        <span className={`text-[10px] font-black uppercase ${s.ativo ? 'text-white' : 'text-zinc-500'}`}>{s.nome}</span>
+                    </div>
+                    {s.ativo && <span className="text-[9px] font-bold text-green-500 uppercase mr-2">Visível</span>}
+                    <button onClick={() => removeScenario(s.id)} className="text-red-900 hover:text-red-500 ml-2 p-2">✕</button>
                   </div>
                 ))}
               </div>
@@ -231,7 +271,7 @@ export default function MapArea() {
         <div className="relative flex-1 bg-black overflow-hidden">
           <TransformWrapper
             ref={transformComponentRef}
-            initialScale={0.8}
+            initialScale={0.5}
             minScale={0.05}
             maxScale={10}
             limitToBounds={false}
@@ -243,9 +283,37 @@ export default function MapArea() {
           >
             <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full">
               <div className="relative inline-block" onClick={() => { setSelectedToken(null); setShowStatus(false); }}>
-                {activeScenario && <img src={activeScenario.url} className="block h-auto pointer-events-none transition-all duration-700" style={{ width: '2500px', filter: visaoNoturna ? 'brightness(0.35) contrast(1.2) sepia(0.5) hue-rotate(180deg)': 'brightness(1)' }} />}
+                
+                {activeScenario && activeScenario.ativo && (
+                    <img 
+                        src={activeScenario.url} 
+                        className="block max-w-none pointer-events-none absolute top-0 left-0 z-0" 
+                        style={{ 
+                            width: 'auto', 
+                            height: 'auto',
+                            filter: visaoNoturna ? 'brightness(0.35) contrast(1.2) sepia(0.5) hue-rotate(180deg)' : 'brightness(1)' 
+                        }} 
+                    />
+                )}
+                
+                <div style={{ width: '3000px', height: '3000px', pointerEvents: 'none' }} />
+
                 {tokens.filter((t: any) => t.noMapa !== false).map((t) => (
-                  <MapToken key={t.id} token={t} canMove={isGm || t.ownerId === user?.uid} selectedToken={selectedToken} mapScale={mapScale} visaoNoturna={visaoNoturna} getCharData={(tk: any) => tk.type === 'player' ? { ...tk, ...characters.find(c => c.id === tk.id) } : tk} rotacionarToken={(e: any, id: string) => { e.preventDefault(); updateToken(id, { rotacao: (tokens.find(tk => tk.id === id)?.rotacao || 0) + 45 }) }} handleTokenClick={(e: any, tk: any, drag = false) => { e.stopPropagation(); if (drag) { setSelectedToken({ id: tk.id, type: tk.type }); return; } const now = Date.now(); if (now - lastTap.current < 400) { setSelectedToken({ id: tk.id, type: tk.type }); setShowStatus(true); } else { setSelectedToken({ id: tk.id, type: tk.type }); lastTap.current = now; } }} updateTokenPos={(id: string, x: number, y: number) => updateToken(id, { x, y })} isPanning={isPanning} showStatus={showStatus} />
+                  <MapToken 
+                    key={t.id} 
+                    token={t} 
+                    isGm={isGm}
+                    canMove={isGm || t.ownerId === user?.uid} 
+                    selectedToken={selectedToken} 
+                    mapScale={mapScale} 
+                    visaoNoturna={visaoNoturna} 
+                    getCharData={(tk: any) => tk.type === 'player' ? { ...tk, ...characters.find(c => c.id === tk.id) } : tk} 
+                    rotacionarToken={(e: any, id: string) => { e.preventDefault(); updateToken(id, { rotacao: (tokens.find(tk => tk.id === id)?.rotacao || 0) + 45 }) }} 
+                    handleTokenClick={(e: any, tk: any, drag = false) => { e.stopPropagation(); if (drag) { setSelectedToken({ id: tk.id, type: tk.type }); return; } const now = Date.now(); if (now - lastTap.current < 400) { setSelectedToken({ id: tk.id, type: tk.type }); setShowStatus(true); } else { setSelectedToken({ id: tk.id, type: tk.type }); lastTap.current = now; } }} 
+                    updateTokenPos={(id: string, x: number, y: number) => updateToken(id, { x, y })} 
+                    isPanning={isPanning} 
+                    showStatus={showStatus} 
+                  />
                 ))}
               </div>
             </TransformComponent>
@@ -254,7 +322,7 @@ export default function MapArea() {
       </div>
 
       {showStatus && selectedData && (
-        <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-8 rounded-t-[2.5rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed bottom-0 left-0 md:bottom-auto md:left-auto md:right-8 md:top-24 z-[300] bg-zinc-950/95 border border-zinc-800 p-8 rounded-t-[2.5rem] md:rounded-[2rem] w-full md:w-80 shadow-[0_0_100px_rgba(0,0,0,0.8)] backdrop-blur-3xl animate-in slide-in-from-bottom-10" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-4">
                     <img src={(selectedData as any).foto} className="w-16 h-16 rounded-2xl object-cover" />
@@ -262,29 +330,61 @@ export default function MapArea() {
                 </div>
                 <button onClick={() => { setSelectedToken(null); setShowStatus(false); }} className="text-zinc-600 hover:text-white text-2xl">✕</button>
             </div>
-            <div className={`space-y-6 ${!(isGm || selectedData.ownerId === user?.uid) ? 'pointer-events-none opacity-60' : ''}`}>
+
+            <div className={`space-y-6 ${!canEdit ? 'pointer-events-none opacity-50 blur-[2px]' : ''}`}>
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-zinc-500">Integridade Física</label>
-                    <input type="range" min="0" max={selectedData.recursos.vidaMaxima} value={selectedData.recursos.vidaAtual} onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, vidaAtual: Number(e.target.value) } })} className="w-full accent-red-600" />
+                    <div className="flex items-center gap-3">
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max={selectedData.recursos.vidaMaxima} 
+                            value={selectedData.recursos.vidaAtual} 
+                            onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, vidaAtual: Number(e.target.value) } })} 
+                            className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                            style={{ accentColor: '#dc2626' }}
+                        />
+                        <span className="text-white font-bold text-xs w-8 text-right">{selectedData.recursos.vidaAtual}</span>
+                    </div>
                 </div>
                 {selectedData.type === 'player' && (
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-zinc-500">Estabilidade Mental</label>
-                        <input type="range" min="0" max={selectedData.recursos.sanidadeMaxima} value={selectedData.recursos.sanidadeAtual} onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, sanidadeAtual: Number(e.target.value) } })} className="w-full accent-indigo-600" />
+                         <div className="flex items-center gap-3">
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max={selectedData.recursos.sanidadeMaxima} 
+                                value={selectedData.recursos.sanidadeAtual} 
+                                onChange={(e) => updateToken(selectedData.id, { recursos: { ...selectedData.recursos, sanidadeAtual: Number(e.target.value) } })} 
+                                className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                                style={{ accentColor: '#06b6d4' }} 
+                            />
+                            <span className="text-white font-bold text-xs w-8 text-right">{selectedData.recursos.sanidadeAtual}</span>
+                        </div>
                     </div>
                 )}
+                
                 <button onClick={() => updateToken(selectedData.id, { lanternaAtiva: !(selectedData as any).lanternaAtiva })} className={`w-full p-4 rounded-2xl text-[10px] font-black uppercase transition-all ${(selectedData as any).lanternaAtiva ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>Luz de Lanterna</button>
-                <button 
-                onClick={() => { 
-                  updateToken(selectedData.id, { noMapa: false }); 
-                  setSelectedToken(null); 
-                  setShowStatus(false); 
-                }} 
-                className="w-full p-4 text-[10px] font-black uppercase text-red-600 hover:text-red-400"
-              >
-                Expulsar do Mapa
-              </button>
+                
+                {canEdit && (
+                   <button 
+                    onClick={async () => { 
+                        try {
+                            await updateToken(selectedData.id, { noMapa: false }); 
+                            setSelectedToken(null); 
+                            setShowStatus(false); 
+                        } catch (e) {
+                            console.error(e)
+                        }
+                    }} 
+                    className="w-full p-4 text-[10px] font-black uppercase text-red-600 hover:text-red-400"
+                  >
+                    Expulsar do Mapa
+                  </button>
+                )}
             </div>
+             {!canEdit && <p className="text-center text-[10px] text-red-500 font-bold mt-4 uppercase">Apenas leitura</p>}
         </div>
       )}
     </div>
