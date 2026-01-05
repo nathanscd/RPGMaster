@@ -171,9 +171,8 @@ export default function SheetView() {
 
         <Section title="Defesa & Perícias">
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <NumericField label="Defesa Passiva" value={character.defesa?.passiva ?? 0} onChange={(val) => update(c => ({ ...c, defesa: { ...(c.defesa || {passiva:0, pontos:0}), passiva: val } }))} />
-              <NumericField label="Bônus de Defesa" value={character.defesa?.pontos ?? 0} onChange={(val) => update(c => ({ ...c, defesa: { ...(c.defesa || {passiva:0, pontos:0}), pontos: val } }))} />
+            <div className="grid  gap-4">
+              <NumericField label="Defesa" value={character.defesa?.passiva ?? 0} onChange={(val) => update(c => ({ ...c, defesa: { ...(c.defesa || {passiva:0, pontos:0}), passiva: val } }))} />
             </div>
             <div className="h-px bg-zinc-800 my-2" />
             <div className="flex justify-between items-center mb-4">

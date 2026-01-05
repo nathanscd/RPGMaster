@@ -6,6 +6,9 @@ export default function FreeDiceRoller() {
   const [resultados, setResultados] = useState<number[]>([])
   const [isRolling, setIsRolling] = useState(false)
   const [selectedDie, setSelectedDie] = useState<number>(20)
+  
+  // Estado para controlar se estamos usando o input customizado
+  const [isCustomQty, setIsCustomQty] = useState(false)
 
   function dispararRolagem() {
     setIsRolling(true)
@@ -20,7 +23,29 @@ export default function FreeDiceRoller() {
     }, 600)
   }
 
-  const total = resultados.reduce((a, b) => a + b, 0) + bonus
+  const handleCustomQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value)
+    if (val > 50) {
+      alert("São dados demais! O limite é 50.")
+      setQuantidade(50)
+    } else {
+      setQuantidade(Math.max(1, val))
+    }
+  }
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value
+    if (val === 'custom') {
+      setIsCustomQty(true)
+      setQuantidade(1) // Reseta para 1 ou mantém o atual se preferir
+    } else {
+      setIsCustomQty(false)
+      setQuantidade(Number(val))
+    }
+  }
+
+  const somaTotal = resultados.reduce((a, b) => a + b, 0) + bonus
+  const maiorTotal = resultados.length > 0 ? Math.max(...resultados) + bonus : 0
 
   return (
     <div className="flex flex-col gap-3">
@@ -38,13 +63,38 @@ export default function FreeDiceRoller() {
       <div className="flex items-center justify-between bg-black p-2 rounded border border-blue-900/30">
         <div className="flex items-center gap-2">
           <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-tighter">Qtd</span>
-          <input
-            type="number"
-            min={1}
-            value={quantidade}
-            onChange={e => setQuantidade(Math.max(1, +e.target.value))}
-            className="w-10 bg-zinc-900 text-center font-bold text-white border-none outline-none focus:ring-1 ring-blue-500 rounded"
-          />
+          
+          {isCustomQty ? (
+            <div className="flex items-center gap-1 animate-in fade-in zoom-in duration-200">
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={quantidade}
+                onChange={handleCustomQtyChange}
+                className="w-12 bg-zinc-900 text-center font-bold text-white border-none outline-none focus:ring-1 ring-blue-500 rounded py-1"
+                autoFocus
+              />
+              <button 
+                onClick={() => { setIsCustomQty(false); setQuantidade(1); }}
+                className="text-zinc-500 hover:text-white text-xs px-1"
+                title="Voltar para lista"
+              >
+                ↺
+              </button>
+            </div>
+          ) : (
+            <select
+              value={quantidade}
+              onChange={handleSelectChange}
+              className="w-14 bg-zinc-900 text-center font-bold text-white border-none outline-none focus:ring-1 ring-blue-500 rounded appearance-none cursor-pointer py-1"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                <option key={num} value={num}>{num}</option>
+              ))}
+              <option value="custom">Outro...</option>
+            </select>
+          )}
         </div>
 
         <span className="text-zinc-800">|</span>
@@ -96,7 +146,7 @@ export default function FreeDiceRoller() {
 
       {(isRolling || resultados.length > 0) && (
         <div className="bg-black border border-blue-900/50 p-3 rounded flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-          <div className="flex flex-wrap gap-2 justify-center min-h-[32px]">
+          <div className="flex flex-wrap gap-2 justify-center min-h-[32px] max-h-[200px] overflow-y-auto custom-scrollbar">
              {isRolling ? (
                Array.from({ length: Math.min(quantidade, 12) }).map((_, i) => (
                  <div key={i} className="w-8 h-8 flex items-center justify-center rounded bg-blue-900/20 border border-blue-500/50 text-blue-400 animate-dice">
@@ -121,11 +171,19 @@ export default function FreeDiceRoller() {
           </div>
           
           {!isRolling && (
-            <div className="flex justify-between items-center border-t border-zinc-900 pt-2 px-1">
-               <span className="text-zinc-500 text-[10px] uppercase font-bold">
-                 {quantidade}d{selectedDie} {bonus >= 0 ? `+${bonus}` : bonus}
-               </span>
-               <span className="text-2xl font-black text-white">{total}</span>
+            <div className="grid grid-cols-2 gap-4 border-t border-zinc-900 pt-3">
+               <div className="flex flex-col items-center justify-center">
+                  <span className="text-[9px] font-black uppercase text-zinc-500 tracking-widest mb-1">Soma Total</span>
+                  <div className="text-xl font-black text-white bg-zinc-900/50 px-4 py-1 rounded border border-zinc-800 w-full text-center">
+                    {somaTotal}
+                  </div>
+               </div>
+               <div className="flex flex-col items-center justify-center border-l border-zinc-900">
+                  <span className="text-[9px] font-black uppercase text-blue-500 tracking-widest mb-1">Maior Dado</span>
+                  <div className="text-xl font-black text-blue-400 bg-blue-900/20 px-4 py-1 rounded border border-blue-500/30 w-full text-center">
+                    {maiorTotal}
+                  </div>
+               </div>
             </div>
           )}
         </div>
