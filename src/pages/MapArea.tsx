@@ -225,15 +225,6 @@ export default function MapArea() {
           <Link to="/" className="text-zinc-500 font-black text-[10px] uppercase tracking-widest px-2">← Sair</Link>
           <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('tokens'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'tokens' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Tokens</button>
           {isGm && <button onClick={() => { setShowSidebar(!showSidebar); setActiveTab('maps'); }} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${showSidebar && activeTab === 'maps' ? 'bg-indigo-600 text-white' : 'bg-zinc-900 text-zinc-400'}`}>Mapas</button>}
-          {isGm && (
-             <button 
-                onClick={() => setMapHidden(!mapHidden)} 
-                className={`px-3 py-2 rounded-lg border border-zinc-800 transition-all ${mapHidden ? 'text-red-500 bg-red-900/20' : 'text-zinc-600'}`}
-                title="Ocultar/Mostrar Mapa (Apenas Visual)"
-             >
-                {mapHidden ? '🙈' : '👁️'}
-             </button>
-          )}
           <button onClick={() => setVisaoNoturna(!visaoNoturna)} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg border border-zinc-800 ${visaoNoturna ? 'text-indigo-400 border-indigo-500' : 'text-zinc-600'}`}>Visão</button>
         </div>
       </div>
