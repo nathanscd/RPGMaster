@@ -2,10 +2,13 @@ import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useCharacters } from '../context/CharacterContext'
 import { useAuth } from '../context/AuthContext'
+import { useFirestoreUsers } from '../hooks/useFirestoreUsers'
 
-function CustomSelect({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+const TEMPORADAS = ["O Ciclo das Cinzas", "Outros"]
+const CLASSES = ['Combatente', 'Especialista', 'Ocultista']
+
+function CustomSelect({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: string[] }) {
   const [isOpen, setIsOpen] = useState(false)
-  const options = ['Combatente', 'Especialista', 'Ocultista']
 
   return (
     <div className="relative">
@@ -13,13 +16,13 @@ function CustomSelect({ value, onChange }: { value: string, onChange: (v: string
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white cursor-pointer flex justify-between items-center hover:border-[var(--accent)] transition-all"
       >
-        <span className="font-bold uppercase tracking-widest text-sm">{value}</span>
+        <span className="font-bold uppercase tracking-widest text-sm truncate">{value}</span>
         <span className={`text-[var(--accent)] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </div>
 
       {isOpen && (
         <>
-          <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-60 overflow-y-auto">
             {options.map(opt => (
               <div
                 key={opt}
@@ -45,12 +48,15 @@ function CustomSelect({ value, onChange }: { value: string, onChange: (v: string
 export default function CreateAgent() {
   const navigate = useNavigate()
   const { addCharacter } = useCharacters()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, isGm } = useAuth()
+  const { users } = useFirestoreUsers()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [nome, setNome] = useState('')
-  const [classe, setClasse] = useState('Combatente')
+  const [classe, setClasse] = useState(CLASSES[0])
   const [origem, setOrigem] = useState('')
+  const [temporada, setTemporada] = useState(TEMPORADAS[0])
+  const [selectedOwner, setSelectedOwner] = useState('') 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -89,13 +95,25 @@ export default function CreateAgent() {
         })
       }
 
+      let finalOwnerId = user.uid
+      let finalOwnerName = user.displayName || 'Anônimo'
+
+      if (isGm && selectedOwner) {
+         const targetUser = users.find(u => u.uid === selectedOwner)
+         if (targetUser) {
+             finalOwnerId = targetUser.uid
+             finalOwnerName = targetUser.displayName || 'Anônimo'
+         }
+      }
+
       const newCharacter = {
         nome,
         classe,
         origem: origem || 'Desconhecida',
         foto: fotoUrl,
-        ownerId: user.uid,
-        ownerName: user.displayName || 'Anônimo',
+        ownerId: finalOwnerId,
+        ownerName: finalOwnerName,
+        temporada: isGm ? temporada : TEMPORADAS[0],
         atributos: { For: 1, Agi: 1, Int: 1, Vig: 1, Pre: 1 },
         recursos: { 
           vidaAtual: 20, vidaMaxima: 20, 
@@ -142,8 +160,31 @@ export default function CreateAgent() {
 
           <div>
             <label className="block text-[10px] font-black uppercase text-zinc-500 mb-2 tracking-[0.2em]">Classe de Operação</label>
-            <CustomSelect value={classe} onChange={setClasse} />
+            <CustomSelect value={classe} onChange={setClasse} options={CLASSES} />
           </div>
+
+          {isGm && (
+             <div>
+                <label className="block text-[10px] font-black uppercase text-zinc-500 mb-2 tracking-[0.2em]">Temporada (Mestre)</label>
+                <CustomSelect value={temporada} onChange={setTemporada} options={TEMPORADAS} />
+             </div>
+          )}
+
+          {isGm && (
+             <div>
+                <label className="block text-[10px] font-black uppercase text-zinc-500 mb-2 tracking-[0.2em]">Atribuir a Jogador (Mestre)</label>
+                <select 
+                    value={selectedOwner}
+                    onChange={(e) => setSelectedOwner(e.target.value)}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg p-3 text-white focus:border-[var(--accent)] outline-none font-bold text-sm uppercase"
+                >
+                    <option value="">Para mim (Mestre)</option>
+                    {users.filter(u => u.uid !== user?.uid).map(u => (
+                        <option key={u.uid} value={u.uid}>{u.displayName}</option>
+                    ))}
+                </select>
+             </div>
+          )}
 
           <div>
             <label className="block text-[10px] font-black uppercase text-zinc-500 mb-2 tracking-[0.2em]">Origem / Passado</label>

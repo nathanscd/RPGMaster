@@ -27,6 +27,7 @@ export interface Character {
   id: string
   ownerId?: string 
   ownerName?: string 
+  temporada: string
   nome: string
   foto?: string
   classe: string

@@ -1,46 +1,69 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { auth } from '../services/firebase'
-import { GoogleAuthProvider, signInWithPopup, signOut, User, onAuthStateChanged } from 'firebase/auth'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { auth, db } from '../services/firebase'
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  User 
+} from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 
-const GM_EMAIL = "nathansec26@gmail.com" 
-
-
-interface AuthContextType {
+interface AuthContextData {
   user: User | null
-  login: () => Promise<void>
-  logout: () => Promise<void>
-  isGm: boolean
   loading: boolean
+  isGm: boolean
+  signIn: () => Promise<void>
+  logout: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType)
+const AuthContext = createContext({} as AuthContextData)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isGm, setIsGm] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser)
+      
+      if (currentUser) {
+        const gmEmails = ['nathansec26@gmail.com']
+        const isUserGm = gmEmails.includes(currentUser.email || '')
+        setIsGm(isUserGm)
+
+        const userRef = doc(db, 'users', currentUser.uid)
+        await setDoc(userRef, {
+          uid: currentUser.uid,
+          displayName: currentUser.displayName || 'Anônimo',
+          email: currentUser.email,
+          photoURL: currentUser.photoURL,
+          isGm: isUserGm,
+          lastLogin: new Date().toISOString()
+        }, { merge: true })
+      } else {
+        setIsGm(false)
+      }
+
       setLoading(false)
     })
+
     return () => unsubscribe()
   }, [])
 
-  const login = async () => {
+  async function signIn() {
     const provider = new GoogleAuthProvider()
     await signInWithPopup(auth, provider)
   }
 
-  const logout = async () => {
+  async function logout() {
     await signOut(auth)
   }
 
-  const isGm = user?.email === GM_EMAIL
-
   return (
-    <AuthContext.Provider value={{ user, login, logout, isGm, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, loading, isGm, signIn, logout }}>
+      {children}
     </AuthContext.Provider>
   )
 }

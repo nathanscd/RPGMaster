@@ -38,7 +38,6 @@
   --text-main: #f1f5f9;
 }
 
-/* Fallback para Mystery se nenhum tema for setado */
 :root {
   font-family: 'Inter', system-ui, sans-serif;
   color-scheme: dark;
