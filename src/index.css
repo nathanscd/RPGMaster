@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* =========================================
-   DEFINIÇÃO DOS TEMAS
-   ========================================= */
 :root[data-theme='mystery'] {
   --bg-app: #000000;
   --bg-card: #050505;
@@ -50,9 +47,6 @@
   --text-main: #e4e4e7;
 }
 
-/* =========================================
-   ESTILOS GERAIS
-   ========================================= */
 body {
   background-color: var(--bg-app);
   color: var(--text-main);
@@ -95,7 +89,6 @@ input:focus, select:focus, textarea:focus {
   margin: 0 auto;
 }
 
-/* Sidebar e Cards usando as variáveis */
 .char, .Section {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);

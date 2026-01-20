@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { signIn } = useAuth()
 
   return (
     <div className="h-screen w-screen bg-zinc-950 flex flex-col items-center justify-center gap-8 relative overflow-hidden">
@@ -14,7 +14,7 @@ export function LoginPage() {
             <p className="text-zinc-400">Faça login para acessar suas fichas</p>
             
             <button 
-                onClick={login}
+                onClick={signIn}
                 className="px-8 py-4 bg-white text-black font-black uppercase tracking-widest rounded-full hover:bg-indigo-500 hover:text-white transition-all shadow-2xl hover:scale-105"
             >
                 Entrar com Google

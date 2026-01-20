@@ -7,7 +7,6 @@ export default function FreeDiceRoller() {
   const [isRolling, setIsRolling] = useState(false)
   const [selectedDie, setSelectedDie] = useState<number>(20)
   
-  // Estado para controlar se estamos usando o input customizado
   const [isCustomQty, setIsCustomQty] = useState(false)
 
   function dispararRolagem() {
@@ -37,7 +36,7 @@ export default function FreeDiceRoller() {
     const val = e.target.value
     if (val === 'custom') {
       setIsCustomQty(true)
-      setQuantidade(1) // Reseta para 1 ou mantém o atual se preferir
+      setQuantidade(1)
     } else {
       setIsCustomQty(false)
       setQuantidade(Number(val))
